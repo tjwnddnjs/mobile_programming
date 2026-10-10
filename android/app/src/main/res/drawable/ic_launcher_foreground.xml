@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- [역할 설명]: 별도 이미지 에셋 없이도 AndroidManifest 아이콘 참조가 깨지지 않게 하는 기본 벡터 아이콘입니다. -->
+    <path
+        android:fillColor="#5C6BC0"
+        android:pathData="M18,20 L90,20 L102,32 L102,68 L90,80 L50,80 L32,94 L32,80 L18,80 L6,68 L6,32 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,38 L36,38 L36,46 L28,46 Z M50,38 L58,38 L58,46 L50,46 Z M72,38 L80,38 L80,46 L72,46 Z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M34,62Q54,74 74,62" />
+</vector>
