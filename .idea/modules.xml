@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/mobile_programming.iml" filepath="$PROJECT_DIR$/.idea/mobile_programming.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/smart_chat_ai_refactored_v2.iml" filepath="$PROJECT_DIR$/.idea/smart_chat_ai_refactored_v2.iml" />
     </modules>
   </component>
 </project>

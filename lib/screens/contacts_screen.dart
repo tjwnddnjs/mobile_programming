@@ -1,271 +1,212 @@
+// lib/screens/contacts_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../models/contact_model.dart';
 import '../providers/contact_provider.dart';
-import '../services/system_overlay_service.dart';
-import '../widgets/contact_editor_dialog.dart';
-import 'contact_detail_screen.dart';
+import '../models/contact_model.dart';
 
-/// [역할 설명]: 등록된 상대방(Target) 목록을 관리하는 화면입니다.
-///
-/// 이 화면에서는 상대방 추가, 목록 조회, 분석 대상 지정이 가능하며,
-/// 각 카드를 탭하면 별도의 상세 화면에서 메모/성향을 더 자세히 확인하고 수정할 수 있습니다.
+/// [역할 설명]: 상대방(Target) 관리 화면입니다.
+/// 1) 등록된 상대방 목록 열람 및 추가/수정/삭제
+/// 2) [personality(AI 성향)] 필드 입력 및 관리
+/// 3) [isAnalysisTarget] '대화 분석 대상(Target)으로 지정하기' 버튼 구현 -> 오버레이 위젯 문맥 주입
 class ContactsScreen extends StatelessWidget {
-  /// [embedded]: HomeScreen 하단 탭 안에서 사용할 때 중첩 Scaffold/AppBar를 만들지 않기 위한 플래그입니다.
-  final bool embedded;
+  const ContactsScreen({super.key});
 
-  const ContactsScreen({
-    super.key,
-    this.embedded = false,
-  });
-
-  /// [추가 액션]: 공용 ContactEditorDialog를 열고 저장 결과를 SnackBar로 알려줍니다.
-  Future<void> _handleAddContact(BuildContext context) async {
-    final created = await showContactEditorDialog(context);
-    if (created == null || !context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${created.name} 님이 상대방 목록에 추가되었습니다.')),
+  void _showAddOrEditDialog(BuildContext context, [ContactModel? contact]) {
+    final nameCtrl = TextEditingController(text: contact?.name ?? '');
+    final relCtrl = TextEditingController(text: contact?.relationship ?? '');
+    final memoCtrl = TextEditingController(text: contact?.memo ?? '');
+    final personalityCtrl = TextEditingController(
+      text: contact?.personality ?? '직설적이며 마감 시간에 민감함',
     );
-  }
 
-  /// [상세 이동]: 카드 탭 시 ContactDetailScreen으로 이동합니다.
-  ///
-  /// id만 넘겨 상세 화면이 Provider에서 최신 객체를 다시 조회하게 하여 수정 후 데이터 불일치를 줄입니다.
-  void _openDetail(BuildContext context, ContactModel contact) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ContactDetailScreen(contactId: contact.id),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final contactProvider = context.watch<ContactProvider>();
-    final contacts = contactProvider.contacts;
-    final content = contactProvider.isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : contacts.isEmpty
-            ? const _EmptyContactsView()
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: contacts.length,
-                itemBuilder: (context, index) {
-                  final contact = contacts[index];
-                  return _ContactCard(
-                    contact: contact,
-                    onTap: () => _openDetail(context, contact),
-                  );
-                },
-              );
-
-    if (embedded) {
-      return Stack(
-        children: [
-          content,
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton.extended(
-              heroTag: 'embedded_contact_add_fab',
-              backgroundColor: const Color(0xFF5C6BC0),
-              foregroundColor: Colors.white,
-              onPressed: () => _handleAddContact(context),
-              icon: const Icon(Icons.person_add),
-              label: const Text('추가'),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('상대방 관리')),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'contact_add_fab',
-        backgroundColor: const Color(0xFF5C6BC0),
-        foregroundColor: Colors.white,
-        onPressed: () => _handleAddContact(context),
-        icon: const Icon(Icons.person_add),
-        label: const Text('추가'),
-      ),
-      body: content,
-    );
-  }
-}
-
-/// [역할 설명]: 상대방이 하나도 없을 때 사용자가 다음 행동을 바로 이해할 수 있게 하는 빈 상태 위젯입니다.
-class _EmptyContactsView extends StatelessWidget {
-  const _EmptyContactsView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text(
-          '등록된 상대방이 없습니다.\n우측 하단 추가 버튼으로 분석 Target을 만들어보세요.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey, height: 1.5),
-        ),
-      ),
-    );
-  }
-}
-
-/// [역할 설명]: 상대방 한 명의 요약 정보와 Target 지정 버튼을 보여주는 목록 카드입니다.
-///
-/// 카드 전체는 상세 화면 진입 역할을 하고, 버튼은 현재 오버레이 분석 대상 지정 역할만 수행합니다.
-class _ContactCard extends StatelessWidget {
-  final ContactModel contact;
-  final VoidCallback onTap;
-
-  const _ContactCard({
-    required this.contact,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isTarget = contact.isAnalysisTarget;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isTarget ? const Color(0xFF5C6BC0) : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(contact == null ? '상대방 추가' : '상대방 정보 수정'),
+        content: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: isTarget ? const Color(0xFF5C6BC0) : Colors.grey.shade300,
-                    child: Text(
-                      contact.name.isNotEmpty ? contact.name[0] : '?',
-                      style: TextStyle(color: isTarget ? Colors.white : Colors.black87),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          contact.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        Text(
-                          contact.relationship,
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isTarget)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8EAF6),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.check_circle, size: 14, color: Color(0xFF5C6BC0)),
-                          SizedBox(width: 4),
-                          Text(
-                            '분석 대상',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF5C6BC0),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // [요약 정보 블록]: 오버레이 프롬프트에 포함되는 성향/메모가 목록에서도 보이게 합니다.
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '이름 (예: 팀장님)')),
+              TextField(controller: relCtrl, decoration: const InputDecoration(labelText: '관계 (예: 직속 상사)')),
+              TextField(controller: memoCtrl, decoration: const InputDecoration(labelText: '특징/메모 (예: 두괄식 보고 선호)')),
+              const SizedBox(height: 8),
+              TextField(
+                controller: personalityCtrl,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'AI 맞춤형 성향',
+                  helperText: '오버레이 AI 분석 시 프롬프트 문맥으로 주입됩니다.',
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI 성향: ${contact.personality}',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (contact.memo.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '메모: ${contact.memo}',
-                        style: const TextStyle(fontSize: 11, color: Colors.black54),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    // [핵심 버튼]: 누른 상대방만 향후 분석/추천 API Context로 주입됩니다.
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isTarget ? const Color(0xFF5C6BC0) : Colors.grey.shade200,
-                        foregroundColor: isTarget ? Colors.white : Colors.black87,
-                        elevation: 0,
-                      ),
-                      onPressed: () async {
-                        await context.read<ContactProvider>().setActiveTarget(contact.id);
-                        await SystemOverlayService.updateTarget(contact);
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('${contact.name} 님이 AI 분석 대상으로 지정되었습니다.')),
-                        );
-                      },
-                      icon: const Icon(Icons.gps_fixed, size: 16),
-                      label: Text(isTarget ? '활성화됨' : '분석 대상으로 지정'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: '상세 보기',
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: onTap,
-                  ),
-                ],
               ),
             ],
           ),
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5C6BC0), foregroundColor: Colors.white),
+            onPressed: () {
+              final prov = context.read<ContactProvider>();
+              if (contact == null) {
+                prov.addContact(
+                  name: nameCtrl.text.trim(),
+                  relationship: relCtrl.text.trim(),
+                  memo: memoCtrl.text.trim(),
+                  personality: personalityCtrl.text.trim(),
+                );
+              } else {
+                prov.updateContact(contact.copyWith(
+                  name: nameCtrl.text.trim(),
+                  relationship: relCtrl.text.trim(),
+                  memo: memoCtrl.text.trim(),
+                  personality: personalityCtrl.text.trim(),
+                ));
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('저장'),
+          ),
+        ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final contactProv = context.watch<ContactProvider>();
+    final contacts = contactProv.contacts;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('상대방 (Target) 관리')),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF5C6BC0),
+        onPressed: () => _showAddOrEditDialog(context),
+        child: const Icon(Icons.person_add, color: Colors.white),
+      ),
+      body: contacts.isEmpty
+          ? const Center(child: Text('등록된 상대방이 없습니다. 우측 하단 버튼을 눌러 추가하세요.'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: contacts.length,
+              itemBuilder: (context, idx) {
+                final c = contacts[idx];
+                final isTarget = c.isAnalysisTarget;
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: isTarget ? const Color(0xFF5C6BC0) : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: isTarget ? const Color(0xFF5C6BC0) : Colors.grey.shade300,
+                                  child: Text(
+                                    c.name.isNotEmpty ? c.name[0] : '?',
+                                    style: TextStyle(color: isTarget ? Colors.white : Colors.black87),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    Text(c.relationship, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            if (isTarget)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.indigo.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle, size: 14, color: Color(0xFF5C6BC0)),
+                                    SizedBox(width: 4),
+                                    Text('분석 대상(Target)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0))),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blueGrey.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('🧠 AI 성향: ${c.personality}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              if (c.memo.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text('📝 메모: ${c.memo}', style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // [핵심 요구사항 B-2]: 대화 분석 대상(Target)으로 지정하기 버튼
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isTarget ? const Color(0xFF5C6BC0) : Colors.grey.shade200,
+                                foregroundColor: isTarget ? Colors.white : Colors.black87,
+                                elevation: 0,
+                              ),
+                              onPressed: () {
+                                context.read<ContactProvider>().setActiveTarget(c.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("'${c.name}' 님이 AI 대화 분석 대상으로 지정되었습니다.")),
+                                );
+                              },
+                              icon: const Icon(Icons.gps_fixed, size: 16),
+                              label: Text(isTarget ? '분석 대상 활성화됨' : '대화 분석 대상으로 지정'),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 20),
+                                  onPressed: () => _showAddOrEditDialog(context, c),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                                  onPressed: () {
+                                    context.read<ContactProvider>().deleteContact(c.id);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

@@ -1,3 +1,4 @@
+export 'widgets/system_overlay_entrypoint.dart' show overlayMain;
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,21 +9,11 @@ import 'screens/signup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/contacts_screen.dart';
-import 'widgets/system_overlay_entrypoint.dart' as system_overlay_entrypoint;
-
-/// [시스템 오버레이 진입점]: flutter_overlay_window 플러그인이 별도 FlutterEngine을 띄울 때 호출하는 함수입니다.
-///
-/// 일부 Android 오버레이 플러그인은 main.dart의 top-level entry point 이름을 기준으로 함수를 찾기 때문에,
-/// 실제 UI 구현은 widgets/system_overlay_entrypoint.dart에 두되 main.dart에서 안전하게 위임합니다.
-@pragma('vm:entry-point')
-void overlayMain() {
-  system_overlay_entrypoint.overlayMain();
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // [앱 시작 로직]: SharedPreferences에 저장된 세션을 먼저 읽어 자동 로그인 여부를 결정합니다.
+  // 인증 상태 로드 (자동 로그인 지원)
   final authProvider = AuthProvider();
   await authProvider.initializeAuth();
 
@@ -54,7 +45,7 @@ class SmartChatApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      // [라우팅]: 현재 앱에서 사용하는 인증/홈/프로필/상대방 관리 화면만 등록합니다.
+      // 자동 로그인 상태에 따른 시작 화면 라우팅
       initialRoute: auth.isLoggedIn ? '/home' : '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
