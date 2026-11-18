@@ -1,28 +1,72 @@
-// lib/models/moonchul_model.dart
-
-/// [역할 설명]: '문철' 기능 수행 후 OpenRouter API로부터 파싱된 객관적 진단 데이터 구조체입니다.
+/// 대화 캡처에 근거한 갈등 분석 결과. 비율은 법적 과실이 아닌 소통 책임 추정치입니다.
 class MoonchulResult {
-  final int myRatio;               // 내 과실 비율 (예: 30)
-  final int otherRatio;            // 상대방 과실 비율 (예: 70)
-  final String myFaultAnalysis;    // 내가 대화 맥락에서 미흡했던 점
-  final String otherFaultAnalysis; // 상대방이 대화 맥락에서 부적절했던 점
-  final String reconciliationAdvice; // 양측이 갈등을 봉합하기 위한 구체적 조언
+  final int myRatio;
+  final int otherRatio;
+  final String myFaultAnalysis;
+  final String otherFaultAnalysis;
+  final String reconciliationAdvice;
+  final bool canJudge;
+  final String summary;
+  final String confidence;
+  final List<String> evidence;
+  final List<String> missingContext;
+  final List<String> recommendedReplies;
 
-  MoonchulResult({
-    required this.myRatio,
-    required this.otherRatio,
-    required this.myFaultAnalysis,
-    required this.otherFaultAnalysis,
-    required this.reconciliationAdvice,
-  });
+  MoonchulResult(
+      {required this.myRatio,
+      required this.otherRatio,
+      required this.myFaultAnalysis,
+      required this.otherFaultAnalysis,
+      required this.reconciliationAdvice,
+      this.canJudge = true,
+      this.summary = '',
+      this.confidence = '낮음',
+      this.evidence = const [],
+      this.missingContext = const [],
+      this.recommendedReplies = const []});
 
   factory MoonchulResult.fromMap(Map<String, dynamic> map) {
+    String requiredText(String key) {
+      final value = map[key];
+      if (value is! String || value.trim().isEmpty)
+        throw FormatException('누락된 분석 항목: $key');
+      return value.trim();
+    }
+
+    List<String> strings(String key) {
+      final value = map[key];
+      if (value == null) return const [];
+      if (value is! List ||
+          value.any((v) => v is! String || v.trim().isEmpty)) {
+        throw FormatException('잘못된 분석 항목: $key');
+      }
+      return value.cast<String>();
+    }
+
+    final a = map['myRatio'];
+    final b = map['otherRatio'];
+    if (a is! int ||
+        b is! int ||
+        a < 0 ||
+        b < 0 ||
+        a > 100 ||
+        b > 100 ||
+        a + b != 100) {
+      throw const FormatException('책임 비율의 합은 100이어야 합니다.');
+    }
+    if (map.containsKey('canJudge') && map['canJudge'] is! bool)
+      throw const FormatException('판단 가능 여부 오류');
     return MoonchulResult(
-      myRatio: map['myRatio'] ?? 50,
-      otherRatio: map['otherRatio'] ?? 50,
-      myFaultAnalysis: map['myFaultAnalysis'] ?? '분석 결과를 불러오지 못했습니다.',
-      otherFaultAnalysis: map['otherFaultAnalysis'] ?? '분석 결과를 불러오지 못했습니다.',
-      reconciliationAdvice: map['reconciliationAdvice'] ?? '부드러운 대화 전환이 권장됩니다.',
-    );
+        myRatio: a,
+        otherRatio: b,
+        myFaultAnalysis: requiredText('myFaultAnalysis'),
+        otherFaultAnalysis: requiredText('otherFaultAnalysis'),
+        reconciliationAdvice: requiredText('reconciliationAdvice'),
+        canJudge: map['canJudge'] as bool? ?? true,
+        summary: map['summary'] as String? ?? '',
+        confidence: map['confidence'] as String? ?? '낮음',
+        evidence: strings('evidence'),
+        missingContext: strings('missingContext'),
+        recommendedReplies: strings('recommendedReplies'));
   }
 }
