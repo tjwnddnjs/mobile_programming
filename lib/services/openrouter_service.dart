@@ -17,8 +17,8 @@ class OpenRouterService {
   final String apiKey;
 
   OpenRouterService(
-      {this.apiKey = const String.fromEnvironment('OPENROUTER_API_KEY'),
-      http.Client? client})
+      {this.apiKey = '일단 비워두고 커밋 할게유~',
+        http.Client? client})
       : _client = client ?? http.Client();
 
   final http.Client _client;
@@ -75,8 +75,20 @@ class OpenRouterService {
       throw StateError('OpenRouter에 연결하지 못했습니다. 네트워크 상태를 확인해주세요.');
     }
     if (response.statusCode != 200) {
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        throw StateError('OpenRouter API 키 또는 접근 권한을 확인해주세요.');
+      if (response.statusCode == 401) {
+        try {
+          final error = jsonDecode(utf8.decode(response.bodyBytes));
+          if (error is Map && error['error'] is Map &&
+              (error['error'] as Map)['message'] == 'User not found.') {
+            throw StateError('OpenRouter에서 사용자 정보를 찾지 못했습니다 (HTTP 401: User not found). 잠시 후 다시 시도하거나 OpenRouter 계정 상태를 확인해주세요.');
+          }
+        } on FormatException {
+          // Preserve the generic authentication message for non-JSON responses.
+        }
+        throw StateError('OpenRouter 인증 실패 (HTTP 401). API 키가 유효한지 확인해주세요.');
+      }
+      if (response.statusCode == 403) {
+        throw StateError('OpenRouter 접근 거부 (HTTP 403). 계정과 API 키의 접근 권한을 확인해주세요.');
       }
       if (response.statusCode == 429) {
         throw StateError('무료 모델 사용 한도에 도달했습니다. 잠시 후 다시 시도해주세요.');
