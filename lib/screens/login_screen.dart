@@ -47,7 +47,22 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       Navigator.pushReplacementNamed(context, '/home');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이메일 또는 비밀번호가 올바르지 않습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.read<AuthProvider>().lastError ?? '이메일 또는 비밀번호가 올바르지 않습니다.')));
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    final auth = context.read<AuthProvider>();
+    final success = await auth.signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
+      final navigator = Navigator.of(context);
+      navigator.pushReplacementNamed('/home');
+      if (auth.needsProfileSetup) navigator.pushNamed('/profile');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(auth.lastError ?? 'Google 로그인에 실패했습니다.')));
     }
   }
 
@@ -126,6 +141,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   onPressed: _isLoading ? null : _handleLogin,
                   child: Text(_isLoading ? '로그인 중...' : '로그인', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 14),
+
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _handleGoogleLogin,
+                  icon: const Icon(Icons.account_circle_outlined),
+                  label: const Text('Google로 계속하기'),
                 ),
                 const SizedBox(height: 14),
 
