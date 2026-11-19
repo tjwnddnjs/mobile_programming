@@ -61,7 +61,7 @@ class RecommendationDialog extends StatelessWidget {
                 child: ListTile(
                   leading: CircleAvatar(
                     radius: 14,
-                    backgroundColor: const Color(0xFF5C6BC0).withValues(alpha: 0.15),
+                    backgroundColor: const Color(0xFF5C6BC0).withOpacity(0.15),
                     child: Text('$idx', style: const TextStyle(color: Color(0xFF5C6BC0), fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                   title: Text(reply, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -69,7 +69,7 @@ class RecommendationDialog extends StatelessWidget {
                   onTap: () => _handleApplyReply(context, reply),
                 ),
               );
-            }),
+            }).toList(),
           ],
         ),
       ),

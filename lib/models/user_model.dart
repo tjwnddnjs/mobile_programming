@@ -9,6 +9,10 @@ class UserModel {
   final String name;
   final String phone;
   final String password; // 실제 상용 환경에서는 해시 처리 권장
+  final String age;
+  final String gender;
+  final String occupation;
+  final String bio;
 
   UserModel({
     required this.id,
@@ -16,6 +20,10 @@ class UserModel {
     required this.name,
     required this.phone,
     required this.password,
+    this.age = '',
+    this.gender = '',
+    this.occupation = '',
+    this.bio = '',
   });
 
   /// 정보 수정(이름, 전화번호, 비밀번호 등) 시 불변성을 유지하며 사본을 생성하는 메서드
@@ -23,6 +31,10 @@ class UserModel {
     String? name,
     String? phone,
     String? password,
+    String? age,
+    String? gender,
+    String? occupation,
+    String? bio,
   }) {
     return UserModel(
       id: id,
@@ -30,6 +42,10 @@ class UserModel {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       password: password ?? this.password,
+      age: age ?? this.age,
+      gender: gender ?? this.gender,
+      occupation: occupation ?? this.occupation,
+      bio: bio ?? this.bio,
     );
   }
 
@@ -40,6 +56,10 @@ class UserModel {
       'name': name,
       'phone': phone,
       'password': password,
+      'age': age,
+      'gender': gender,
+      'occupation': occupation,
+      'bio': bio,
     };
   }
 
@@ -50,6 +70,10 @@ class UserModel {
       name: map['name'] ?? '',
       phone: map['phone'] ?? '',
       password: map['password'] ?? '',
+      age: map['age'] ?? '',
+      gender: map['gender'] ?? '',
+      occupation: map['occupation'] ?? '',
+      bio: map['bio'] ?? '',
     );
   }
 

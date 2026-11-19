@@ -1,144 +1,88 @@
+// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../providers/auth_provider.dart';
-import '../providers/contact_provider.dart';
 
-/// [역할 설명]: 현재 로그인한 사용자의 My Info 관리 화면입니다.
-///
-/// 사용자는 가입 정보 확인, 이름/전화번호/비밀번호 수정, 로그아웃, 계정 탈퇴를 수행할 수 있습니다.
-/// 모든 변경은 AuthProvider를 거쳐 로컬 세션과 가입자 목록에 즉시 반영됩니다.
+/// [역할 설명]: 사용자 계정 관리(My Info) 화면입니다.
+/// 1) 현재 가입된 사용자 정보(이름, 이메일, 전화번호) 열람
+/// 2) 다이얼로그 또는 폼을 통한 이름/비밀번호/전화번호 수정 및 실시간 Provider 갱신
+/// 3) 확인 팝업을 거친 계정 탈퇴(로컬 스토리지 데이터 완전 삭제 및 로그인 화면 라우팅)
 class ProfileScreen extends StatefulWidget {
-  /// [embedded]: HomeScreen의 하단 탭 안에 들어갈 때는 중첩 AppBar/Scaffold를 만들지 않기 위한 플래그입니다.
-  final bool embedded;
-
-  const ProfileScreen({
-    super.key,
-    this.embedded = false,
-  });
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  /// [정보 수정 다이얼로그]: 이름/전화번호는 기존 값을 보여주고, 비밀번호는 보안상 빈 칸으로 시작합니다.
-  ///
-  /// 새 비밀번호를 비워두면 기존 비밀번호가 유지되며, 입력한 경우에만 Provider에 변경값을 전달합니다.
+  // 정보 수정 다이얼로그
   void _showEditProfileDialog() {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser;
     if (user == null) return;
 
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController(text: user.name);
-    final phoneController = TextEditingController(text: user.phone);
-    final passwordController = TextEditingController();
-    bool obscurePassword = true;
+    final nameCtrl = TextEditingController(text: user.name);
+    final phoneCtrl = TextEditingController(text: user.phone);
+    final ageCtrl = TextEditingController(text: user.age);
+    final genderCtrl = TextEditingController(text: user.gender);
+    final occupationCtrl = TextEditingController(text: user.occupation);
+    final bioCtrl = TextEditingController(text: user.bio);
 
     showDialog(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('내 정보 수정'),
-              content: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // [수정 필드]: 홈 화면 환영 문구와 프로필 아바타에 반영되는 표시 이름입니다.
-                      TextFormField(
-                        controller: nameController,
-                        decoration: const InputDecoration(labelText: '이름'),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) return '이름을 입력해주세요.';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 8),
-
-                      // [수정 필드]: 등록 전화번호를 바꾸면 즉시 Profile 화면 정보 카드에 반영됩니다.
-                      TextFormField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(labelText: '전화번호'),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) return '전화번호를 입력해주세요.';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 8),
-
-                      // [수정 필드]: 새 비밀번호를 입력한 경우에만 기존 비밀번호를 교체합니다.
-                      TextFormField(
-                        controller: passwordController,
-                        obscureText: obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: '새 비밀번호 (선택)',
-                          helperText: '비워두면 기존 비밀번호가 유지됩니다.',
-                          suffixIcon: IconButton(
-                            icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () {
-                              setDialogState(() => obscurePassword = !obscurePassword);
-                            },
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty && value.length < 6) {
-                            return '새 비밀번호는 6자 이상이어야 합니다.';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('취소'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5C6BC0),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () async {
-                    if (!formKey.currentState!.validate()) return;
-
-                    await auth.updateProfile(
-                      name: nameController.text.trim(),
-                      phone: phoneController.text.trim(),
-                      password: passwordController.text,
-                    );
-
-                    if (!mounted || !dialogContext.mounted) return;
-                    Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('회원 정보가 변경되었습니다.')),
-                    );
-                  },
-                  child: const Text('저장'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (ctx) => AlertDialog(
+        title: const Text('내 정보 수정'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '이름')),
+              TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: '전화번호')),
+              TextField(controller: ageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '나이 (선택)')),
+              TextField(controller: genderCtrl, decoration: const InputDecoration(labelText: '성별 (선택)')),
+              TextField(controller: occupationCtrl, decoration: const InputDecoration(labelText: '직업 (선택)')),
+              TextField(controller: bioCtrl, maxLines: 3, decoration: const InputDecoration(labelText: '소개 및 대화 선호 (선택)')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5C6BC0), foregroundColor: Colors.white),
+            onPressed: () async {
+              final age = ageCtrl.text.trim();
+              if (age.isNotEmpty && (int.tryParse(age) == null || int.parse(age) < 1 || int.parse(age) > 120)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('나이는 1~120 사이의 숫자로 입력해주세요.')));
+                return;
+              }
+              if (nameCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이름을 입력해주세요.')));
+                return;
+              }
+              await auth.updateProfile(
+                name: nameCtrl.text.trim(),
+                phone: phoneCtrl.text.trim(),
+                age: age, gender: genderCtrl.text.trim(),
+                occupation: occupationCtrl.text.trim(), bio: bioCtrl.text.trim(),
+              );
+              if (!mounted || !ctx.mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('회원 정보가 성공적으로 변경되었습니다.')),
+              );
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
     );
   }
 
-  /// [계정 탈퇴 다이얼로그]: 실수로 탈퇴하지 않도록 확인 팝업을 거칩니다.
-  ///
-  /// 확인 시 인증 정보와 등록 상대방 목록을 모두 지우고 로그인 화면으로 이동합니다.
+  // [신규 요구사항 A-2]: 계정 탈퇴 다이얼로그
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
@@ -147,30 +91,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         content: const Text(
-          '정말 탈퇴하시겠습니까?\n탈퇴 시 등록된 상대방 목록과 저장된 모든 데이터가 삭제되며 복구할 수 없습니다.',
+          '정말 탈퇴하시겠습니까?\n탈퇴 시 등록된 상대방 목록과 저장된 모든 데이터가 영구히 삭제되며 복구할 수 없습니다.',
           style: TextStyle(height: 1.4),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('취소'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
             onPressed: () async {
-              final authProvider = context.read<AuthProvider>();
-              final contactProvider = context.read<ContactProvider>();
-              final navigator = Navigator.of(context);
-
-              Navigator.pop(dialogContext);
-              await authProvider.deleteAccount();
-              await contactProvider.clearAllContacts();
-
+              Navigator.pop(ctx);
+              await context.read<AuthProvider>().deleteAccount();
               if (!mounted) return;
-              navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
             },
             child: const Text('탈퇴 확인'),
           ),
@@ -183,10 +115,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
 
-    final body = user == null
-        ? const Center(child: Text('로그인 정보가 없습니다.'))
-        : ListView(
-              padding: const EdgeInsets.all(20),
+    return Scaffold(
+      appBar: AppBar(title: const Text('내 정보 (Profile)')),
+      body: user == null
+          ? const Center(child: Text('로그인 정보가 없습니다.'))
+          : ListView(
+              padding: const EdgeInsets.all(20.0),
               children: [
                 Center(
                   child: Stack(
@@ -195,12 +129,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 46,
                         backgroundColor: const Color(0xFF5C6BC0),
                         child: Text(
-                          user.name.isNotEmpty ? user.name[0] : '?',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          user.name.isNotEmpty ? user.name[0] : '김',
+                          style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Positioned(
@@ -221,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // [정보 표시 블록]: 가입 당시 입력한 사용자 정보를 읽기 전용 카드로 보여줍니다.
+                // 정보 표시 카드
                 Card(
                   elevation: 1,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -229,29 +159,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Column(
                       children: [
-                        _ProfileTile(
-                          icon: Icons.person,
-                          label: '이름',
-                          value: user.name,
+                        ListTile(
+                          leading: const Icon(Icons.person, color: Color(0xFF5C6BC0)),
+                          title: const Text('이름', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          subtitle: Text(user.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
                         const Divider(height: 1),
-                        _ProfileTile(
-                          icon: Icons.email,
-                          label: '아이디 / 이메일',
-                          value: user.email,
+                        ListTile(
+                          leading: const Icon(Icons.email, color: Color(0xFF5C6BC0)),
+                          title: const Text('아이디 / 이메일', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          subtitle: Text(user.email, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
                         const Divider(height: 1),
-                        _ProfileTile(
-                          icon: Icons.phone,
-                          label: '전화번호',
-                          value: user.phone,
+                        ListTile(
+                          leading: const Icon(Icons.phone, color: Color(0xFF5C6BC0)),
+                          title: const Text('전화번호', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          subtitle: Text(user.phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
+                        for (final field in <(String, String)>[
+                          ('나이', user.age), ('성별', user.gender),
+                          ('직업', user.occupation), ('소개 및 대화 선호', user.bio),
+                        ])
+                          ListTile(title: Text(field.$1), subtitle: Text(field.$2.isEmpty ? '미설정' : field.$2)),
+                        const ListTile(subtitle: Text('이름, 나이, 성별, 직업과 소개는 답장 추천 시 AI에 전달됩니다.')),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
+                // 수정 버튼
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -265,70 +202,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
 
+                // 로그아웃 버튼
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () async {
-                    final authProvider = context.read<AuthProvider>();
-                    final navigator = Navigator.of(context);
-
-                    await authProvider.logout();
+                    await context.read<AuthProvider>().logout();
                     if (!mounted) return;
-                    navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+                    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                   },
                   icon: const Icon(Icons.logout),
                   label: const Text('로그아웃'),
                 ),
                 const SizedBox(height: 24),
 
+                // 계정 탈퇴 버튼 (빨간색 텍스트 버튼)
                 Center(
                   child: TextButton.icon(
                     style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
                     onPressed: _showDeleteAccountDialog,
                     icon: const Icon(Icons.delete_forever, size: 18),
-                    label: const Text(
-                      '계정 탈퇴하기',
-                      style: TextStyle(fontSize: 13, decoration: TextDecoration.underline),
-                    ),
+                    label: const Text('계정 탈퇴하기', style: TextStyle(fontSize: 13, decoration: TextDecoration.underline)),
                   ),
                 ),
               ],
-            );
-
-    if (widget.embedded) return body;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('내 정보')),
-      body: body,
-    );
-  }
-}
-
-/// [역할 설명]: ProfileScreen의 반복되는 정보 행을 작고 일관된 위젯으로 분리했습니다.
-///
-/// 아이콘, 라벨, 값의 레이아웃을 한 곳에서 관리해 프로필 항목이 늘어나도 UI가 흐트러지지 않습니다.
-class _ProfileTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _ProfileTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF5C6BC0)),
-      title: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      subtitle: Text(
-        value,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-      ),
+            ),
     );
   }
 }
