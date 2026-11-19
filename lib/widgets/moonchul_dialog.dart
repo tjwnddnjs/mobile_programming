@@ -1,378 +1,335 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-
+import 'package:flutter/services.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import '../services/screen_capture_service.dart';
 import '../models/contact_model.dart';
 import '../models/moonchul_model.dart';
 import '../services/openrouter_service.dart';
 
-/// [역할 설명]: "문철" 기능을 수행하는 이미지 선택 및 결과 렌더링 다이얼로그입니다.
-///
-/// 사용자는 갤러리에서 여러 장을 고르거나 카메라로 추가 촬영할 수 있고,
-/// 선택한 이미지들은 Base64로 인코딩되어 OpenRouter Vision 모델에 전달됩니다.
 class MoonchulDialog extends StatefulWidget {
   final ContactModel? targetContact;
   final OpenRouterService openRouterService;
-
-  const MoonchulDialog({
-    super.key,
-    this.targetContact,
-    required this.openRouterService,
-  });
-
+  final bool isSystemOverlay;
+  final bool isPage;
+  const MoonchulDialog(
+      {super.key,
+      this.targetContact,
+      required this.openRouterService,
+      this.isSystemOverlay = false,
+      this.isPage = false});
   @override
   State<MoonchulDialog> createState() => _MoonchulDialogState();
 }
 
 class _MoonchulDialogState extends State<MoonchulDialog> {
-  final ImagePicker _picker = ImagePicker();
-
-  List<XFile> _selectedImages = [];
-  bool _isLoading = false;
+  final _contextNote = TextEditingController();
+  List<String> _images = [];
+  String _mySide = '오른쪽 말풍선';
+  bool _loading = false;
+  String? _error;
   MoonchulResult? _result;
+  AnonymousMoonchulResult? _anonymousResult;
 
-  /// [갤러리 선택]: 여러 장의 대화 캡처를 한 번에 첨부합니다.
-  ///
-  /// 기존 선택 이미지를 덮어쓰지 않고 뒤에 붙여, 카메라 촬영 이미지와 함께 분석할 수 있게 합니다.
-  Future<void> _pickImagesFromGallery() async {
-    final images = await _picker.pickMultiImage();
-    if (images.isEmpty) return;
-
-    setState(() => _selectedImages = [..._selectedImages, ...images]);
+  @override
+  void dispose() {
+    _contextNote.dispose();
+    super.dispose();
   }
 
-  /// [카메라 촬영]: 방금 촬영한 이미지 한 장을 분석 목록에 추가합니다.
-  Future<void> _pickImageFromCamera() async {
-    final image = await _picker.pickImage(source: ImageSource.camera);
-    if (image == null) return;
-
-    setState(() => _selectedImages = [..._selectedImages, image]);
-  }
-
-  /// [이미지 제거]: 사용자가 잘못 선택한 사진을 분석 전 목록에서 제외합니다.
-  void _removeImageAt(int index) {
+  Future<void> _pickImages() async {
     setState(() {
-      _selectedImages = [
-        ..._selectedImages.take(index),
-        ..._selectedImages.skip(index + 1),
-      ];
+      _loading = true;
+      _error = null;
     });
-  }
-
-  /// [분석 실행]: 선택된 이미지들을 Base64로 변환한 뒤 OpenRouterService에 전달합니다.
-  ///
-  /// 네트워크 실패 또는 API 키 미설정은 서비스의 폴백 결과로 처리되어 UI가 중단되지 않습니다.
-  Future<void> _runAnalysis() async {
-    if (_selectedImages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('분석할 대화 캡처 사진을 1장 이상 선택해주세요.')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
     try {
-      final base64Images = <String>[];
-      for (final image in _selectedImages) {
-        final bytes = await image.readAsBytes();
-        base64Images.add(base64Encode(bytes));
+      if (widget.isSystemOverlay)
+        await FlutterOverlayWindow.resizeOverlay(1, 1, false);
+      final images = await ScreenCaptureService.pickImagesAsBase64();
+      if (!mounted) return;
+      if (images != null && images.isNotEmpty) {
+        if (images.length > 5) throw StateError('사진은 최대 5장까지 선택해주세요.');
+        // 미리보기 불가능한 입력은 분석 전에 알립니다.
+        for (final image in images) {
+          base64Decode(image);
+        }
+        setState(() {
+          _images = images;
+          _result = null;
+          _anonymousResult = null;
+        });
       }
-
-      final result = await widget.openRouterService.analyzeMoonchulFault(
-        base64Images: base64Images,
-        targetContact: widget.targetContact,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _result = result;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이미지 분석 중 오류가 발생했습니다.')),
-      );
+    } catch (error) {
+      if (mounted)
+        setState(() => _error = error is PlatformException
+            ? (error.message ?? '사진을 읽지 못했습니다.')
+            : error is StateError
+                ? '${error.message}'
+                : '사진을 읽지 못했습니다. 다운로드한 이미지 파일을 선택해주세요.');
+    } finally {
+      try {
+        if (widget.isSystemOverlay)
+          await FlutterOverlayWindow.resizeOverlay(340, 620, false);
+      } catch (_) {
+        if (mounted)
+          setState(() => _error = '오버레이 크기를 복원하지 못했습니다. 창을 다시 열어주세요.');
+      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: Colors.white,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _DialogHeader(onClose: () => Navigator.pop(context)),
-                const Divider(height: 16),
-                if (_result == null)
-                  _buildPickerStep()
-                else
-                  _MoonchulResultView(result: _result!),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  Future<void> _analyze() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      if (_mySide == '구분하기 어려움') {
+        final result = await widget.openRouterService.analyzeAnonymousConversation(
+          base64Images: _images, contextNote: _contextNote.text.trim());
+        if (mounted) setState(() => _anonymousResult = result);
+        return;
+      }
+      final result = await widget.openRouterService.analyzeMoonchulFault(
+          base64Images: _images,
+          targetContact: widget.targetContact,
+          mySide: _mySide,
+          contextNote: _contextNote.text.trim());
+      if (mounted) setState(() => _result = result);
+    } catch (e) {
+      if (mounted)
+        setState(() => _error =
+            e is StateError ? '${e.message}' : '분석하지 못했습니다. 다시 시도해주세요.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
-  /// [1단계 UI]: 이미지 선택과 분석 시작 버튼을 보여줍니다.
-  Widget _buildPickerStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          '대화 캡처 사진을 첨부하면 AI가 양측의 과실 비율과 맥락을 객관적으로 분석합니다.',
-          style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: _isLoading ? null : _pickImagesFromGallery,
-                icon: const Icon(Icons.photo_library),
-                label: const Text('갤러리'),
-              ),
-            ),
+  Widget _section(String title, String body) => Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        const SizedBox(height: 6),
+        SelectableText(body),
+      ]));
+
+  @override
+  Widget build(BuildContext context) {
+    final result = _result;
+    final anonymousResult = _anonymousResult;
+    final content = Column(mainAxisSize: MainAxisSize.min, children: [
+      if (!widget.isPage)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+          child: Row(children: [
+            const Icon(Icons.balance, color: Colors.deepOrange),
             const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: _isLoading ? null : _pickImageFromCamera,
-                icon: const Icon(Icons.photo_camera),
-                label: const Text('카메라'),
-              ),
-            ),
-          ],
+            const Expanded(child: Text('문철 · 대화 분쟁 분석',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            IconButton(tooltip: '닫기', onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close)),
+          ]),
         ),
-        if (_selectedImages.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _SelectedImageList(
-            images: _selectedImages,
-            onRemove: _removeImageAt,
-          ),
-        ],
-        const SizedBox(height: 16),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            backgroundColor: Colors.redAccent,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          onPressed: _isLoading ? null : _runAnalysis,
-          child: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Text('과실 비율 분석 시작 (${_selectedImages.length}장)'),
-        ),
-      ],
-    );
-  }
-}
-
-/// [역할 설명]: 문철 다이얼로그 상단 제목과 닫기 버튼을 렌더링합니다.
-class _DialogHeader extends StatelessWidget {
-  final VoidCallback onClose;
-
-  const _DialogHeader({required this.onClose});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.balance, color: Colors.redAccent, size: 24),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            '문철 대화 과실 진단',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.close, size: 20),
-          onPressed: onClose,
-        ),
-      ],
-    );
-  }
-}
-
-/// [역할 설명]: 선택된 이미지 파일 이름 목록과 제거 버튼을 보여줍니다.
-///
-/// 썸네일 디코딩 없이 파일명만 표시해 다이얼로그가 가볍게 유지되도록 했습니다.
-class _SelectedImageList extends StatelessWidget {
-  final List<XFile> images;
-  final ValueChanged<int> onRemove;
-
-  const _SelectedImageList({
-    required this.images,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < images.length; index++)
-            ListTile(
-              dense: true,
-              leading: const Icon(Icons.image_outlined, size: 18),
-              title: Text(
-                images[index].name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: () => onRemove(index),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// [역할 설명]: 문철 분석 완료 후 과실 비율과 객관적 분석 문장을 렌더링합니다.
-class _MoonchulResultView extends StatelessWidget {
-  final MoonchulResult result;
-
-  const _MoonchulResultView({required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    final myFlex = result.myRatio <= 0 ? 1 : result.myRatio;
-    final otherFlex = result.otherRatio <= 0 ? 1 : result.otherRatio;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '나 : ${result.myRatio}%',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16),
-            ),
-            Text(
-              '상대방 : ${result.otherRatio}%',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent, fontSize: 16),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-
-        // [비율 게이지]: 두 Expanded flex가 0이 되지 않게 보정하여 런타임 assert를 방지합니다.
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Row(
-            children: [
-              Expanded(
-                flex: myFlex,
-                child: Container(height: 16, color: Colors.blue),
-              ),
-              Expanded(
-                flex: otherFlex,
-                child: Container(height: 16, color: Colors.redAccent),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _AnalysisBox(
-          title: '내 대화 방식의 아쉬운 점',
-          text: result.myFaultAnalysis,
-          color: Colors.blue,
-          backgroundColor: Colors.blue.shade50,
-        ),
-        const SizedBox(height: 10),
-        _AnalysisBox(
-          title: '상대방 대화 방식의 아쉬운 점',
-          text: result.otherFaultAnalysis,
-          color: Colors.redAccent,
-          backgroundColor: Colors.red.shade50,
-        ),
-        const SizedBox(height: 10),
-        _AnalysisBox(
-          title: '서로 보완해야 할 점',
-          text: result.reconciliationAdvice,
-          color: Colors.amber.shade800,
-          backgroundColor: Colors.amber.shade50,
-        ),
-        const SizedBox(height: 14),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF5C6BC0),
-            foregroundColor: Colors.white,
-          ),
-          onPressed: () => Navigator.pop(context),
-          child: const Text('확인 완료'),
-        ),
-      ],
-    );
-  }
-}
-
-/// [역할 설명]: 분석 결과 문장들을 색상별 박스로 일관되게 보여주는 위젯입니다.
-class _AnalysisBox extends StatelessWidget {
-  final String title;
-  final String text;
-  final Color color;
-  final Color backgroundColor;
-
-  const _AnalysisBox({
-    required this.title,
-    required this.text,
-    required this.color,
-    required this.backgroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: color),
-          ),
-          const SizedBox(height: 4),
-          Text(text, style: const TextStyle(fontSize: 12, height: 1.45)),
-        ],
+      if (!widget.isPage) const Divider(),
+          Flexible(
+              child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (result == null && anonymousResult == null) ...[
+                    const Text('누가 어떤 말을 했는지 살펴보고, 갈등의 원인과 다음 답장을 함께 정리해요.'),
+                    const SizedBox(height: 12),
+                    const Text('1. 대화 사진 첨부 (최대 5장)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('시간순으로 선택하고 아래 미리보기 순서를 확인해주세요.'),
+                    OutlinedButton.icon(
+                        onPressed: _loading ? null : _pickImages,
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: Text(_images.isEmpty ? '사진 선택' : '사진 다시 선택')),
+                    if (_images.isNotEmpty)
+                      SizedBox(
+                          height: 140,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _images.length,
+                            separatorBuilder: (_, index) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (_, i) => SizedBox(
+                                width: 92,
+                                child: Column(children: [
+                                  Text('${i + 1}번'),
+                                  Expanded(
+                                      child: Image.memory(
+                                          base64Decode(_images[i]),
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (_, error, stack) =>
+                                              const Center(
+                                                  child: Text('미리보기 불가')))),
+                                  IconButton(
+                                      tooltip: '사진 삭제',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: _loading
+                                          ? null
+                                          : () => setState(
+                                              () => _images.removeAt(i)),
+                                      icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          size: 18)),
+                                ])),
+                          )),
+                    const SizedBox(height: 12),
+                    const Text('2. 내 메시지 위치',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButton<String>(
+                        isExpanded: true,
+                        value: _mySide,
+                        items: ['오른쪽 말풍선', '왼쪽 말풍선', '구분하기 어려움']
+                            .map((s) =>
+                                DropdownMenuItem(value: s, child: Text(s)))
+                            .toList(),
+                        onChanged: _loading
+                            ? null
+                            : (v) => setState(() => _mySide = v!)),
+                    if (_mySide == '구분하기 어려움')
+                      const Text('인물 A, B 등으로 구분해 분석합니다. 이름이나 역할을 알고 있다면 아래 추가 상황에 적어주세요.',
+                          style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const SizedBox(height: 12),
+                    TextField(
+                        controller: _contextNote,
+                        enabled: !_loading,
+                        maxLength: 1500,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                            labelText: '3. 추가 상황 (선택)',
+                            hintText: '다툰 이유, 이전 약속, 원하는 해결 방향을 알려주세요.',
+                            border: OutlineInputBorder())),
+                    Text(
+                        _mySide == '구분하기 어려움'
+                          ? '분석 시작 시 선택한 사진과 추가 상황을 OpenRouter로 전송합니다. 불필요한 개인정보는 가려주세요.'
+                          : '분석 시작 시 선택한 사진과 추가 상황, 선택된 상대방의 이름·관계를 OpenRouter로 전송합니다. 불필요한 개인정보는 가려주세요.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                        onPressed:
+                            _loading || _images.isEmpty ? null : _analyze,
+                        child:
+                            Text(_loading ? '대화와 근거를 분석하고 있어요…' : '분쟁 분석 시작')),
+                    if (_loading) const LinearProgressIndicator(),
+                  ] else if (anonymousResult != null) ...[
+                    _section(anonymousResult.canJudge ? '잠정 판단' : '판단 보류', anonymousResult.summary),
+                    Text('판단 확신도: ${anonymousResult.confidence}',
+                        style: const TextStyle(color: Colors.black54)),
+                    if (anonymousResult.participants.isEmpty)
+                      _section('대화 인물', '이미지에서 인물을 확실하게 구분하지 못했습니다.'),
+                    for (final person in anonymousResult.participants)
+                      Card(child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(person.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 6),
+                          SelectableText('식별 단서: ${person.identification}'),
+                          const SizedBox(height: 6),
+                          SelectableText(person.analysis),
+                        ]),
+                      )),
+                    if (anonymousResult.evidence.isNotEmpty)
+                      _section('대화에서 확인한 근거', anonymousResult.evidence.map((e) => '• $e').join('\n\n')),
+                    if (anonymousResult.missingContext.isNotEmpty)
+                      _section('더 확인할 내용', anonymousResult.missingContext.map((e) => '• $e').join('\n')),
+                    _section('갈등 해결 방향', anonymousResult.reconciliationAdvice),
+                    const SizedBox(height: 12),
+                    const Text('식별과 판단은 보이는 대화를 바탕으로 한 AI의 잠정 의견입니다.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    OutlinedButton(onPressed: () => setState(() {
+                      _anonymousResult = null;
+                      _error = null;
+                    }), child: const Text('사진·상황 수정 후 다시 분석')),
+                  ] else if (result != null) ...[
+                    _section(
+                        result.canJudge ? '잠정 판단' : '판단 보류', result.summary),
+                    Text('판단 확신도: ${result.confidence}',
+                        style: const TextStyle(color: Colors.black54)),
+                    if (result.canJudge) ...[
+                      _section('소통 책임 추정',
+                          '나 ${result.myRatio}%  :  상대방 ${result.otherRatio}%'),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                          value: result.myRatio / 100,
+                          minHeight: 12,
+                          color: Colors.blue,
+                          backgroundColor: Colors.deepOrange.shade200),
+                    ],
+                    _section(
+                        '대화에서 확인한 근거',
+                        result.evidence.isEmpty
+                            ? '판단할 수 있는 발언이 부족합니다.'
+                            : result.evidence.map((e) => '• $e').join('\n\n')),
+                    _section('내 행동 분석', result.myFaultAnalysis),
+                    _section('상대방 행동 분석', result.otherFaultAnalysis),
+                    if (result.missingContext.isNotEmpty)
+                      _section('더 확인할 내용',
+                          result.missingContext.map((e) => '• $e').join('\n')),
+                    _section('갈등 해결 순서', result.reconciliationAdvice),
+                    const SizedBox(height: 16),
+                    const Text('바로 보낼 수 있는 답장',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    for (var i = 0; i < result.recommendedReplies.length; i++)
+                      Card(
+                          child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(['차분한 설명', '경계 설정', '합의 제안'][i],
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 6),
+                                    SelectableText(
+                                        result.recommendedReplies[i]),
+                                    TextButton.icon(
+                                        onPressed: () async {
+                                          await Clipboard.setData(ClipboardData(
+                                              text: result
+                                                  .recommendedReplies[i]));
+                                          if (context.mounted)
+                                            ScaffoldMessenger.maybeOf(context)
+                                                ?.showSnackBar(const SnackBar(
+                                                    content:
+                                                        Text('답장을 복사했습니다.')));
+                                        },
+                                        icon: const Icon(Icons.copy, size: 16),
+                                        label: const Text('답장 복사')),
+                                  ]))),
+                    const SizedBox(height: 12),
+                    const Text(
+                        '캡처에 보이는 내용만 바탕으로 한 AI의 잠정 의견이며, 법적 과실이나 사실 확정이 아닙니다.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    OutlinedButton(
+                        onPressed: () => setState(() {
+                              _result = null;
+                              _error = null;
+                            }),
+                        child: const Text('사진·상황 수정 후 다시 분석')),
+                  ],
+                  if (_error != null)
+                    Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(_error!,
+                            style: const TextStyle(color: Colors.red))),
+                ]),
+          )),
+    ]);
+    if (widget.isPage) return content;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 720),
+        child: content,
       ),
     );
   }

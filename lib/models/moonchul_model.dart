@@ -1,81 +1,145 @@
-/// [역할 설명]: '문철' 기능 수행 후 OpenRouter API에서 받은 대화 과실 분석 결과 모델입니다.
-///
-/// UI는 이 모델만 바라보고 과실 비율 게이지, 내 잘못/상대방 잘못 분석,
-/// 그리고 서로 보완할 점을 렌더링합니다.
+/// 대화 캡처에 근거한 갈등 분석 결과. 비율은 법적 과실이 아닌 소통 책임 추정치입니다.
 class MoonchulResult {
   final int myRatio;
   final int otherRatio;
   final String myFaultAnalysis;
   final String otherFaultAnalysis;
   final String reconciliationAdvice;
+  final bool canJudge;
+  final String summary;
+  final String confidence;
+  final List<String> evidence;
+  final List<String> missingContext;
+  final List<String> recommendedReplies;
 
-  MoonchulResult({
-    required int myRatio,
-    required int otherRatio,
-    required this.myFaultAnalysis,
-    required this.otherFaultAnalysis,
-    required this.reconciliationAdvice,
-  })  : myRatio = _clampRatio(myRatio),
-        otherRatio = _clampRatio(otherRatio);
+  MoonchulResult(
+      {required this.myRatio,
+      required this.otherRatio,
+      required this.myFaultAnalysis,
+      required this.otherFaultAnalysis,
+      required this.reconciliationAdvice,
+      this.canJudge = true,
+      this.summary = '',
+      this.confidence = '낮음',
+      this.evidence = const [],
+      this.missingContext = const [],
+      this.recommendedReplies = const []});
 
-  /// [JSON 역직렬화]: 모델이 숫자를 문자열로 반환하는 경우까지 허용합니다.
-  ///
-  /// myRatio와 otherRatio 합이 100이 아닌 경우에는 두 값의 상대 비율을 유지하면서
-  /// 합이 100이 되도록 보정해 UI 프로그레스 바가 안정적으로 그려지게 합니다.
   factory MoonchulResult.fromMap(Map<String, dynamic> map) {
-    final rawMyRatio = _parseInt(map['myRatio'], fallback: 50);
-    final rawOtherRatio = _parseInt(map['otherRatio'], fallback: 50);
-    final normalized = _normalizePair(rawMyRatio, rawOtherRatio);
+    String requiredText(String key) {
+      final value = map[key];
+      if (value is! String || value.trim().isEmpty)
+        throw FormatException('누락된 분석 항목: $key');
+      return value.trim();
+    }
 
+    List<String> strings(String key) {
+      final value = map[key];
+      if (value == null) return const [];
+      if (value is! List ||
+          value.any((v) => v is! String || v.trim().isEmpty)) {
+        throw FormatException('잘못된 분석 항목: $key');
+      }
+      return value.cast<String>();
+    }
+
+    // JSON 모델이 30을 30.0 또는 "30%"로 반환해도 같은 정수 비율로 해석합니다.
+    // 소수 비율을 임의 반올림하거나 범위를 보정하여 판단을 바꾸지는 않습니다.
+    int? ratio(dynamic value) {
+      final number = value is num ? value : num.tryParse(
+          value.toString().trim().replaceFirst(RegExp(r'%$'), '').trim());
+      if (number == null || !number.isFinite || number != number.roundToDouble()) return null;
+      return number.toInt();
+    }
+    final a = ratio(map['myRatio']);
+    final b = ratio(map['otherRatio']);
+    if (a is! int ||
+        b is! int ||
+        a < 0 ||
+        b < 0 ||
+        a > 100 ||
+        b > 100 ||
+        a + b != 100) {
+      throw const FormatException('책임 비율의 합은 100이어야 합니다.');
+    }
+    if (map.containsKey('canJudge') && map['canJudge'] is! bool)
+      throw const FormatException('판단 가능 여부 오류');
     return MoonchulResult(
-      myRatio: normalized.$1,
-      otherRatio: normalized.$2,
-      myFaultAnalysis: _parseText(
-        map['myFaultAnalysis'],
-        fallback: '대화 맥락상 내가 보완해야 할 지점을 충분히 분석하지 못했습니다.',
-      ),
-      otherFaultAnalysis: _parseText(
-        map['otherFaultAnalysis'],
-        fallback: '대화 맥락상 상대방이 보완해야 할 지점을 충분히 분석하지 못했습니다.',
-      ),
-      reconciliationAdvice: _parseText(
-        map['reconciliationAdvice'],
-        fallback: '다음 대화에서는 의도, 일정, 요청 사항을 짧고 명확하게 나누어 전달해보세요.',
-      ),
-    );
+        myRatio: a,
+        otherRatio: b,
+        myFaultAnalysis: requiredText('myFaultAnalysis'),
+        otherFaultAnalysis: requiredText('otherFaultAnalysis'),
+        reconciliationAdvice: requiredText('reconciliationAdvice'),
+        canJudge: map['canJudge'] as bool? ?? true,
+        summary: map['summary'] as String? ?? '',
+        confidence: map['confidence'] as String? ?? '낮음',
+        evidence: strings('evidence'),
+        missingContext: strings('missingContext'),
+        recommendedReplies: strings('recommendedReplies'));
   }
+}
 
-  /// [숫자 파싱]: int, double, 숫자 문자열을 모두 안전하게 int로 변환합니다.
-  static int _parseInt(dynamic value, {required int fallback}) {
-    if (value is int) return value;
-    if (value is double) return value.round();
-    if (value is String) return int.tryParse(value.replaceAll('%', '').trim()) ?? fallback;
-    return fallback;
+class ConversationParticipant {
+  final String label;
+  final String identification;
+  final String analysis;
+
+  ConversationParticipant({required this.label, required this.identification, required this.analysis});
+
+  factory ConversationParticipant.fromMap(Map<String, dynamic> map) {
+    String text(String key) {
+      final value = map[key];
+      if (value is! String || value.trim().isEmpty) throw FormatException('잘못된 인물 정보: $key');
+      return value.trim();
+    }
+    return ConversationParticipant(label: text('label'), identification: text('identification'), analysis: text('analysis'));
   }
+}
 
-  /// [문자열 파싱]: 빈 응답을 UI에 그대로 보여주지 않도록 기본 문구를 제공합니다.
-  static String _parseText(dynamic value, {required String fallback}) {
-    final text = value?.toString().trim();
-    return text == null || text.isEmpty ? fallback : text;
-  }
+class AnonymousMoonchulResult {
+  final bool canJudge;
+  final String summary;
+  final String confidence;
+  final List<ConversationParticipant> participants;
+  final List<String> evidence;
+  final List<String> missingContext;
+  final String reconciliationAdvice;
 
-  /// [범위 보정]: 과실 비율이 0~100 사이를 벗어나지 않도록 제한합니다.
-  static int _clampRatio(int value) {
-    if (value < 0) return 0;
-    if (value > 100) return 100;
-    return value;
-  }
+  AnonymousMoonchulResult({required this.canJudge, required this.summary, required this.confidence,
+    required this.participants, required this.evidence, required this.missingContext,
+    required this.reconciliationAdvice});
 
-  /// [합계 보정]: 두 비율 합을 100으로 맞춰 프로그레스 바 렌더링 오류를 방지합니다.
-  static (int, int) _normalizePair(int myRatio, int otherRatio) {
-    final safeMy = _clampRatio(myRatio);
-    final safeOther = _clampRatio(otherRatio);
-    final total = safeMy + safeOther;
-
-    if (total == 100) return (safeMy, safeOther);
-    if (total == 0) return (50, 50);
-
-    final normalizedMy = ((safeMy / total) * 100).round();
-    return (normalizedMy, 100 - normalizedMy);
+  factory AnonymousMoonchulResult.fromMap(Map<String, dynamic> map) {
+    String text(String key) {
+      final value = map[key];
+      if (value is! String || value.trim().isEmpty) throw FormatException('잘못된 분석 항목: $key');
+      return value.trim();
+    }
+    List<String> strings(String key) {
+      final value = map[key];
+      if (value is! List || value.any((e) => e is! String || e.trim().isEmpty)) {
+        throw FormatException('잘못된 분석 항목: $key');
+      }
+      return value.cast<String>();
+    }
+    final canJudge = map['canJudge'];
+    final rawParticipants = map['participants'];
+    if (canJudge is! bool || rawParticipants is! List) throw const FormatException('잘못된 분석 형식');
+    final participants = rawParticipants.map((entry) {
+      if (entry is! Map) throw const FormatException('잘못된 인물 형식');
+      return ConversationParticipant.fromMap(Map<String, dynamic>.from(entry));
+    }).toList();
+    final confidence = text('confidence');
+    final evidence = strings('evidence');
+    final missing = strings('missingContext');
+    if (!['낮음', '보통', '높음'].contains(confidence) ||
+        participants.map((p) => p.label).toSet().length != participants.length ||
+        (canJudge && (participants.length < 2 || evidence.isEmpty)) ||
+        (!canJudge && missing.isEmpty)) {
+      throw const FormatException('인물 분석 정보가 부족합니다.');
+    }
+    return AnonymousMoonchulResult(canJudge: canJudge, summary: text('summary'),
+      confidence: confidence, participants: participants, evidence: evidence,
+      missingContext: missing, reconciliationAdvice: text('reconciliationAdvice'));
   }
 }
