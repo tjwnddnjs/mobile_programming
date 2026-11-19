@@ -23,7 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final nameCtrl = TextEditingController(text: user.name);
     final phoneCtrl = TextEditingController(text: user.phone);
-    final pwCtrl = TextEditingController(text: user.password);
+    final ageCtrl = TextEditingController(text: user.age);
+    final genderCtrl = TextEditingController(text: user.gender);
+    final occupationCtrl = TextEditingController(text: user.occupation);
+    final bioCtrl = TextEditingController(text: user.bio);
 
     showDialog(
       context: context,
@@ -35,11 +38,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '이름')),
               TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: '전화번호')),
-              TextField(
-                controller: pwCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: '새 비밀번호'),
-              ),
+              TextField(controller: ageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '나이 (선택)')),
+              TextField(controller: genderCtrl, decoration: const InputDecoration(labelText: '성별 (선택)')),
+              TextField(controller: occupationCtrl, decoration: const InputDecoration(labelText: '직업 (선택)')),
+              TextField(controller: bioCtrl, maxLines: 3, decoration: const InputDecoration(labelText: '소개 및 대화 선호 (선택)')),
             ],
           ),
         ),
@@ -48,12 +50,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5C6BC0), foregroundColor: Colors.white),
             onPressed: () async {
+              final age = ageCtrl.text.trim();
+              if (age.isNotEmpty && (int.tryParse(age) == null || int.parse(age) < 1 || int.parse(age) > 120)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('나이는 1~120 사이의 숫자로 입력해주세요.')));
+                return;
+              }
+              if (nameCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이름을 입력해주세요.')));
+                return;
+              }
               await auth.updateProfile(
                 name: nameCtrl.text.trim(),
                 phone: phoneCtrl.text.trim(),
-                password: pwCtrl.text.trim(),
+                age: age, gender: genderCtrl.text.trim(),
+                occupation: occupationCtrl.text.trim(), bio: bioCtrl.text.trim(),
               );
-              if (mounted) Navigator.pop(ctx);
+              if (!mounted || !ctx.mounted) return;
+              Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('회원 정보가 성공적으로 변경되었습니다.')),
               );
@@ -163,6 +176,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           title: const Text('전화번호', style: TextStyle(fontSize: 12, color: Colors.grey)),
                           subtitle: Text(user.phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
+                        for (final field in <(String, String)>[
+                          ('나이', user.age), ('성별', user.gender),
+                          ('직업', user.occupation), ('소개 및 대화 선호', user.bio),
+                        ])
+                          ListTile(title: Text(field.$1), subtitle: Text(field.$2.isEmpty ? '미설정' : field.$2)),
+                        const ListTile(subtitle: Text('이름, 나이, 성별, 직업과 소개는 답장 추천 시 AI에 전달됩니다.')),
                       ],
                     ),
                   ),

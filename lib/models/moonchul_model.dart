@@ -70,3 +70,68 @@ class MoonchulResult {
         recommendedReplies: strings('recommendedReplies'));
   }
 }
+
+class ConversationParticipant {
+  final String label;
+  final String identification;
+  final String analysis;
+
+  ConversationParticipant({required this.label, required this.identification, required this.analysis});
+
+  factory ConversationParticipant.fromMap(Map<String, dynamic> map) {
+    String text(String key) {
+      final value = map[key];
+      if (value is! String || value.trim().isEmpty) throw FormatException('잘못된 인물 정보: $key');
+      return value.trim();
+    }
+    return ConversationParticipant(label: text('label'), identification: text('identification'), analysis: text('analysis'));
+  }
+}
+
+class AnonymousMoonchulResult {
+  final bool canJudge;
+  final String summary;
+  final String confidence;
+  final List<ConversationParticipant> participants;
+  final List<String> evidence;
+  final List<String> missingContext;
+  final String reconciliationAdvice;
+
+  AnonymousMoonchulResult({required this.canJudge, required this.summary, required this.confidence,
+    required this.participants, required this.evidence, required this.missingContext,
+    required this.reconciliationAdvice});
+
+  factory AnonymousMoonchulResult.fromMap(Map<String, dynamic> map) {
+    String text(String key) {
+      final value = map[key];
+      if (value is! String || value.trim().isEmpty) throw FormatException('잘못된 분석 항목: $key');
+      return value.trim();
+    }
+    List<String> strings(String key) {
+      final value = map[key];
+      if (value is! List || value.any((e) => e is! String || e.trim().isEmpty)) {
+        throw FormatException('잘못된 분석 항목: $key');
+      }
+      return value.cast<String>();
+    }
+    final canJudge = map['canJudge'];
+    final rawParticipants = map['participants'];
+    if (canJudge is! bool || rawParticipants is! List) throw const FormatException('잘못된 분석 형식');
+    final participants = rawParticipants.map((entry) {
+      if (entry is! Map) throw const FormatException('잘못된 인물 형식');
+      return ConversationParticipant.fromMap(Map<String, dynamic>.from(entry));
+    }).toList();
+    final confidence = text('confidence');
+    final evidence = strings('evidence');
+    final missing = strings('missingContext');
+    if (!['낮음', '보통', '높음'].contains(confidence) ||
+        participants.map((p) => p.label).toSet().length != participants.length ||
+        (canJudge && (participants.length < 2 || evidence.isEmpty)) ||
+        (!canJudge && missing.isEmpty)) {
+      throw const FormatException('인물 분석 정보가 부족합니다.');
+    }
+    return AnonymousMoonchulResult(canJudge: canJudge, summary: text('summary'),
+      confidence: confidence, participants: participants, evidence: evidence,
+      missingContext: missing, reconciliationAdvice: text('reconciliationAdvice'));
+  }
+}

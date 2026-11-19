@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/contact_model.dart';
 import '../services/storage_service.dart';
+import '../services/system_overlay_service.dart';
 
 /// [역할 설명]: 상대방(Target) 목록과 현재 활성화된 '대화 분석 대상'을 관리하는 Provider입니다.
 /// '대화 분석 대상(Target)으로 지정하기' 클릭 시, 단 하나의 대상만 isAnalysisTarget=true로 유지하며
@@ -9,13 +10,25 @@ import '../services/storage_service.dart';
 class ContactProvider extends ChangeNotifier {
   final StorageService _storageService;
   List<ContactModel> _contacts = [];
+  String? _userId;
 
   ContactProvider({StorageService? storageService})
       : _storageService = storageService ?? StorageService() {
-    loadContacts();
+  }
+
+  void setUser(String? userId) {
+    if (_userId == userId) return;
+    _userId = userId;
+    _contacts = [];
+    if (userId != null) loadContacts();
   }
 
   List<ContactModel> get contacts => _contacts;
+
+  Future<void> _syncOverlay() async {
+    final target = activeTarget;
+    if (target != null) await SystemOverlayService.updateTarget(target);
+  }
 
   /// 현재 대화 분석 대상(Target)으로 지정된 상대방 반환 (없을 시 첫 번째 또는 기본 상대방)
   ContactModel? get activeTarget {
@@ -27,7 +40,10 @@ class ContactProvider extends ChangeNotifier {
   }
 
   Future<void> loadContacts() async {
-    _contacts = await _storageService.getContacts();
+    final requestedUser = _userId;
+    final contacts = await _storageService.getContacts();
+    if (requestedUser != _userId) return;
+    _contacts = contacts;
     notifyListeners();
   }
 
@@ -50,6 +66,7 @@ class ContactProvider extends ChangeNotifier {
     _contacts.add(newContact);
     await _storageService.saveContacts(_contacts);
     notifyListeners();
+    await _syncOverlay();
   }
 
   /// 상대방 정보 수정
@@ -59,6 +76,7 @@ class ContactProvider extends ChangeNotifier {
       _contacts[idx] = updated;
       await _storageService.saveContacts(_contacts);
       notifyListeners();
+      await _syncOverlay();
     }
   }
 
@@ -71,6 +89,7 @@ class ContactProvider extends ChangeNotifier {
     }
     await _storageService.saveContacts(_contacts);
     notifyListeners();
+    await _syncOverlay();
   }
 
   /// [핵심 요구사항]: '대화 분석 대상(Target)으로 지정하기' 액션
@@ -81,5 +100,6 @@ class ContactProvider extends ChangeNotifier {
 
     await _storageService.saveContacts(_contacts);
     notifyListeners();
+    await _syncOverlay();
   }
 }

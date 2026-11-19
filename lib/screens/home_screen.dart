@@ -1,10 +1,13 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/contact_provider.dart';
 import '../services/system_overlay_service.dart';
 import 'contacts_screen.dart';
+import 'analysis_screen.dart';
+import 'moonchul_screen.dart';
 
 /// [역할 설명]: 앱의 메인 허브 화면입니다.
 /// [변경사항 준수]: 기존의 '분석로그 탭'과 '오버레이 실행 테스트 탭'을 완전히 제거하였으며,
@@ -20,8 +23,31 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isOverlayActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshOverlayState();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshOverlayState();
+  }
+
+  Future<void> _refreshOverlayState() async {
+    final active = await SystemOverlayService.isActive();
+    if (mounted) setState(() => _isOverlayActive = active);
+  }
 
   Future<void> _setOverlay(bool enabled) async {
     if (!enabled) {
@@ -62,6 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: '오버레이 토글',
             onPressed: () => _setOverlay(!_isOverlayActive),
           ),
+          IconButton(icon: const Icon(Icons.exit_to_app), tooltip: '앱 나가기',
+              onPressed: () => SystemNavigator.pop()),
         ],
       ),
       body: Stack(
@@ -166,6 +194,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   value: _isOverlayActive,
                   onChanged: _setOverlay,
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              Card(
+                child: Column(children: [
+                  ListTile(
+                    leading: const Icon(Icons.person_outline, color: Color(0xFF5C6BC0)),
+                    title: const Text('내 정보 수정'),
+                    subtitle: const Text('내 프로필과 계정 관리'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.pushNamed(context, '/profile'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.auto_awesome, color: Color(0xFF5C6BC0)),
+                    title: const Text('대화 분석 / 추천'),
+                    subtitle: const Text('대화 사진으로 맞춤 답장 받기'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalysisScreen())),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.balance, color: Colors.deepOrange),
+                    title: const Text('문철 · 과실 분석'),
+                    subtitle: const Text('대화 속 갈등과 해결 방향 분석하기'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MoonchulScreen())),
+                  ),
+                ]),
               ),
               const SizedBox(height: 16),
 

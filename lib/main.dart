@@ -21,7 +21,10 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
-        ChangeNotifierProvider<ContactProvider>(create: (_) => ContactProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ContactProvider>(
+          create: (_) => ContactProvider(),
+          update: (_, auth, contacts) => contacts!..setUser(auth.currentUser?.id),
+        ),
       ],
       child: const SmartChatApp(),
     ),

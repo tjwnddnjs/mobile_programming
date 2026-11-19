@@ -2,11 +2,14 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/storage_service.dart';
+import '../services/local_account_service.dart';
+import '../services/system_overlay_service.dart';
 
 /// [역할 설명]: 유저 인증 및 프로필 상태를 앱 전역에 공급(Provider)하는 ChangeNotifier입니다.
 /// 회원가입, 자동 로그인, 내 정보 수정, 계정 탈퇴 액션을 중앙에서 관장합니다.
 class AuthProvider extends ChangeNotifier {
   final StorageService _storageService;
+  final _accounts = LocalAccountService();
 
   UserModel? _currentUser;
   bool _isInitialized = false;
@@ -21,6 +24,13 @@ class AuthProvider extends ChangeNotifier {
   /// 앱 구동 시 자동 로그인 초기화
   Future<void> initializeAuth() async {
     _currentUser = await _storageService.getCurrentUser();
+    final legacy = _currentUser;
+    if (legacy != null && legacy.password.isNotEmpty) {
+      final clean = legacy.copyWith(password: '');
+      await _accounts.register(clean, legacy.password);
+      _currentUser = clean;
+      await _storageService.saveUserSession(clean);
+    }
     _isInitialized = true;
     notifyListeners();
   }
@@ -34,12 +44,13 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     final newUser = UserModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      email: email,
+      email: email.trim().toLowerCase(),
       name: name,
       phone: phone,
-      password: password,
+      password: '',
     );
 
+    if (!await _accounts.register(newUser, password)) return false;
     _currentUser = newUser;
     await _storageService.saveUserSession(newUser);
     notifyListeners();
@@ -48,19 +59,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// 2. 로그인 액션
   Future<bool> login(String email, String password) async {
-    // 로컬 스토리지에 기등록된 유저가 있다면 대조, 없으면 데모 유저 생성 후 세션 수립
-    final savedUser = await _storageService.getCurrentUser();
-    if (savedUser != null && savedUser.email == email) {
-      _currentUser = savedUser;
-    } else {
-      _currentUser = UserModel(
-        id: 'usr_default',
-        email: email,
-        name: '김대리',
-        phone: '010-1234-5678',
-        password: password,
-      );
-    }
+    final savedUser = await _accounts.authenticate(email, password);
+    if (savedUser == null) return false;
+    _currentUser = savedUser;
     await _storageService.saveUserSession(_currentUser!);
     notifyListeners();
     return true;
@@ -71,6 +72,10 @@ class AuthProvider extends ChangeNotifier {
     String? name,
     String? phone,
     String? password,
+    String? age,
+    String? gender,
+    String? occupation,
+    String? bio,
   }) async {
     if (_currentUser == null) return;
 
@@ -78,14 +83,20 @@ class AuthProvider extends ChangeNotifier {
       name: name,
       phone: phone,
       password: password,
+      age: age,
+      gender: gender,
+      occupation: occupation,
+      bio: bio,
     );
 
     await _storageService.saveUserSession(_currentUser!);
+    await _accounts.updateUser(_currentUser!);
     notifyListeners();
   }
 
   /// 4. 로그아웃 액션
   Future<void> logout() async {
+    await SystemOverlayService.closeSystemOverlay();
     _currentUser = null;
     await _storageService.clearUserSession(isDeleteAccount: false);
     notifyListeners();
@@ -93,6 +104,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// 5. 계정 탈퇴 액션 (모든 데이터 파기 및 초기화)
   Future<void> deleteAccount() async {
+    await SystemOverlayService.closeSystemOverlay();
+    final user = _currentUser;
+    if (user != null) await _accounts.delete(user);
     _currentUser = null;
     await _storageService.clearUserSession(isDeleteAccount: true);
     notifyListeners();

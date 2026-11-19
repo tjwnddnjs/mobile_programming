@@ -51,6 +51,8 @@ class _SignupScreenState extends State<SignupScreen> {
         const SnackBar(content: Text('🎉 회원가입이 완료되었습니다! 환영합니다.')),
       );
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미 가입된 이메일입니다.')));
     }
   }
 
@@ -75,6 +77,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   'SmartChat AI 계정 만들기',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                 ),
+                const SizedBox(height: 6),
+                const Text('계정은 이 기기에만 저장됩니다. 앱을 삭제하면 복구할 수 없습니다.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54)),
                 const SizedBox(height: 6),
                 const Text(
                   '기본 정보를 입력하여 실시간 메신저 코칭을 시작해보세요.',

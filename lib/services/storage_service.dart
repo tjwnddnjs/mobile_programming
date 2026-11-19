@@ -12,8 +12,9 @@ class StorageService {
   static const String _keyContactsList = 'smartchat_contacts_list';
 
   /// 현재 로그인된 유저 로드 (앱 기동 시 자동 로그인 판별에 활용)
-  Future<UserModel?> getCurrentUser() async {
+  Future<UserModel?> getCurrentUser({bool refresh = false}) async {
     final prefs = await SharedPreferences.getInstance();
+    if (refresh) await prefs.reload();
     final jsonStr = prefs.getString(_keyCurrentUser);
     if (jsonStr == null) return null;
     try {
@@ -33,18 +34,27 @@ class StorageService {
   /// 로그아웃 또는 계정 탈퇴 시 로컬 데이터 클리어
   Future<void> clearUserSession({bool isDeleteAccount = false}) async {
     final prefs = await SharedPreferences.getInstance();
+    final user = await getCurrentUser();
     await prefs.remove(_keyCurrentUser);
     await prefs.setBool(_keyIsLoggedIn, false);
     if (isDeleteAccount) {
       // 계정 탈퇴 시 모든 등록된 상대방 데이터도 완전 파기
-      await prefs.remove(_keyContactsList);
+      if (user != null) await prefs.remove(_contactKey(user.id));
     }
   }
 
   /// 상대방 목록 불러오기
   Future<List<ContactModel>> getContacts() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonListStr = prefs.getString(_keyContactsList);
+    final user = await getCurrentUser();
+    if (user == null) return [];
+    final key = _contactKey(user.id);
+    var jsonListStr = prefs.getString(key);
+    if (jsonListStr == null && prefs.containsKey(_keyContactsList)) {
+      jsonListStr = prefs.getString(_keyContactsList);
+      if (jsonListStr != null) await prefs.setString(key, jsonListStr);
+      await prefs.remove(_keyContactsList);
+    }
     if (jsonListStr == null) {
       // 초기 기본 상대방 샘플 제공
       return [
@@ -77,7 +87,11 @@ class StorageService {
   /// 상대방 목록 영구 저장
   Future<void> saveContacts(List<ContactModel> contacts) async {
     final prefs = await SharedPreferences.getInstance();
+    final user = await getCurrentUser();
+    if (user == null) return;
     final encoded = json.encode(contacts.map((c) => c.toMap()).toList());
-    await prefs.setString(_keyContactsList, encoded);
+    await prefs.setString(_contactKey(user.id), encoded);
   }
+
+  String _contactKey(String userId) => '${_keyContactsList}_$userId';
 }

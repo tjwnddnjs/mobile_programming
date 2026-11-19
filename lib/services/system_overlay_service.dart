@@ -8,6 +8,7 @@ import '../models/contact_model.dart';
 /// 플로팅 오버레이 위젯이 계속 떠있도록 Android System Alert Window(WindowManager)를 제어하는 서비스입니다.
 /// flutter_overlay_window 패키지를 래핑하여 권한 검사, 권한 요청, 오버레이 표시 및 종료를 전담합니다.
 class SystemOverlayService {
+  static Future<bool> isActive() => FlutterOverlayWindow.isActive();
   /// 1. '다른 앱 위에 표시(SYSTEM_ALERT_WINDOW)' 권한 허용 여부 확인
   static Future<bool> isPermissionGranted() async {
     return await FlutterOverlayWindow.isPermissionGranted();
@@ -15,7 +16,8 @@ class SystemOverlayService {
 
   /// 2. 시스템 오버레이 권한 요청 (안드로이드 시스템 설정 화면으로 이동)
   static Future<bool?> requestPermission() async {
-    return await FlutterOverlayWindow.requestPermission();
+    return await const MethodChannel('com.smartchat.ai/overlay_setup')
+        .invokeMethod<bool>('requestPermission');
   }
 
   /// 3. 시스템 백그라운드 오버레이 표시 (앱을 닫아도 계속 유지됨)
@@ -45,7 +47,10 @@ class SystemOverlayService {
     );
 
     // 활성화된 타겟 상대방 정보를 오버레이 프로세스로 공유
-    await FlutterOverlayWindow.shareData(target.toJson());
+    await FlutterOverlayWindow.shareData({
+      'action': 'start',
+      'target': target.toMap(),
+    });
     return true;
   }
 

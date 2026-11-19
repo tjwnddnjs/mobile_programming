@@ -6,6 +6,7 @@ import 'dart:convert';
 import '../models/contact_model.dart';
 import '../services/screen_capture_service.dart';
 import '../services/openrouter_service.dart';
+import '../services/storage_service.dart';
 import 'recommendation_dialog.dart';
 import 'moonchul_dialog.dart';
 
@@ -41,9 +42,19 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
     FlutterOverlayWindow.overlayListener.listen((event) {
       if (event != null) {
         try {
-          final map = json.decode(event.toString());
+          final map = event is String ? json.decode(event) : event;
+          if (map is! Map) return;
+          if (map['action'] == 'start') {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+            final target = Map<String, dynamic>.from(map['target'] as Map);
+            setState(() {
+              _isExpanded = false;
+              _targetContact = ContactModel.fromMap(target);
+            });
+            return;
+          }
           setState(() {
-            _targetContact = ContactModel.fromMap(map);
+            _targetContact = ContactModel.fromMap(Map<String, dynamic>.from(map));
           });
         } catch (_) {}
       }
@@ -56,6 +67,7 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
     if (!mounted) return;
     final source = await showDialog<String>(
       context: context,
+      barrierColor: Colors.transparent,
       builder: (context) => AlertDialog(
         title: const Text('분석할 사진 선택'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -80,7 +92,7 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
       final selectedImage = image;
       await FlutterOverlayWindow.resizeOverlay(340, 520, false);
       if (!mounted) return;
-      final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      final confirmed = await showDialog<bool>(context: context, barrierColor: Colors.transparent, builder: (dialogContext) => AlertDialog(
         title: Text(source == 'capture' ? '캡처한 화면' : '선택한 사진'),
         content: SingleChildScrollView(child: Image.memory(base64Decode(selectedImage))),
         actions: [
@@ -90,14 +102,15 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
       ));
       if (confirmed != true) return;
       final target = _targetContact ?? ContactModel(id: '1', name: '상대방', relationship: '대화 상대');
-      final replies = await _openRouterService.getChatRecommendations(base64Screenshot: selectedImage, targetContact: target);
+      final user = await StorageService().getCurrentUser(refresh: true);
+      final replies = await _openRouterService.getChatRecommendations(base64Screenshot: selectedImage, targetContact: target, user: user);
       if (!mounted) return;
-      await showDialog(context: context, builder: (_) => RecommendationDialog(targetName: target.name, recommendations: replies));
+      await showDialog(context: context, barrierColor: Colors.transparent, builder: (_) => RecommendationDialog(targetName: target.name, recommendations: replies));
     } catch (error) {
       if (!mounted) return;
       await FlutterOverlayWindow.resizeOverlay(340, 520, false);
       if (!mounted) return;
-      await showDialog(context: context, builder: (context) => AlertDialog(
+      await showDialog(context: context, barrierColor: Colors.transparent, builder: (context) => AlertDialog(
         title: const Text('분석을 시작하지 못했습니다'),
         content: Text(error is StateError ? error.message : error is PlatformException ? (error.message ?? '사진을 가져오지 못했습니다.') : '화면 캡처 또는 사진 선택을 사용할 수 없습니다.'),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인'))],
@@ -114,6 +127,7 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
     if (!mounted) return;
     await showDialog(
       context: context,
+      barrierColor: Colors.transparent,
       builder: (ctx) => MoonchulDialog(
         targetContact: _targetContact,
         openRouterService: _openRouterService,
@@ -124,8 +138,9 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
   }
 
   // 3. 나가기 (시스템 오버레이 창 닫기)
-  void _handleClose() {
-    FlutterOverlayWindow.closeOverlay();
+  Future<void> _handleClose() async {
+    setState(() => _isExpanded = false);
+    await FlutterOverlayWindow.closeOverlay();
   }
 
   @override
