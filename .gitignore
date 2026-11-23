@@ -54,4 +54,3 @@ checkpoint_*.zip
 **/key.properties
 **/local.properties
 secrets/
-.firebase-pub-cache/

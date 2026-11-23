@@ -39,10 +39,7 @@ class StorageService {
     await prefs.setBool(_keyIsLoggedIn, false);
     if (isDeleteAccount) {
       // 계정 탈퇴 시 모든 등록된 상대방 데이터도 완전 파기
-      if (user != null) {
-        await prefs.remove(_contactKey(user.id));
-        await prefs.remove('smartchat_profile_${user.id}');
-      }
+      if (user != null) await prefs.remove(_contactKey(user.id));
     }
   }
 
@@ -97,24 +94,4 @@ class StorageService {
   }
 
   String _contactKey(String userId) => '${_keyContactsList}_$userId';
-
-  Future<UserModel?> getUserProfile(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString('smartchat_profile_$id');
-    if (value == null) return null;
-    try { return UserModel.fromJson(value); } catch (_) { return null; }
-  }
-
-  Future<void> saveUserProfile(UserModel user) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('smartchat_profile_${user.id}', user.copyWith(password: '').toJson());
-  }
-
-  Future<void> copyContactsToUser(String oldId, String newId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final old = prefs.getString(_contactKey(oldId));
-    if (old != null && !prefs.containsKey(_contactKey(newId))) {
-      await prefs.setString(_contactKey(newId), old);
-    }
-  }
 }

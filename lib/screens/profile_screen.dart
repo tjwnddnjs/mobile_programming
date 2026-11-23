@@ -1,7 +1,6 @@
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import '../providers/auth_provider.dart';
 
 /// [역할 설명]: 사용자 계정 관리(My Info) 화면입니다.
@@ -101,17 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.pop(ctx);
-              try {
-                await context.read<AuthProvider>().deleteAccount();
-              } on FirebaseAuthException catch (error) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(error.code == 'requires-recent-login'
-                      ? '보안을 위해 로그아웃 후 다시 로그인하고 탈퇴해주세요.'
-                      : '계정을 삭제하지 못했습니다. 다시 시도해주세요.'),
-                ));
-                return;
-              }
+              await context.read<AuthProvider>().deleteAccount();
               if (!mounted) return;
               Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
             },

@@ -52,7 +52,7 @@ class _SignupScreenState extends State<SignupScreen> {
       );
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.read<AuthProvider>().lastError ?? '회원가입에 실패했습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미 가입된 이메일입니다.')));
     }
   }
 
@@ -78,7 +78,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                 ),
                 const SizedBox(height: 6),
-                const Text('이메일 계정은 Firebase에 저장됩니다. 프로필과 연락처는 현재 기기에 저장됩니다.',
+                const Text('계정은 이 기기에만 저장됩니다. 앱을 삭제하면 복구할 수 없습니다.',
                     style: TextStyle(fontSize: 12, color: Colors.black54)),
                 const SizedBox(height: 6),
                 const Text(
