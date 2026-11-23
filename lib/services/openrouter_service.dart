@@ -55,6 +55,9 @@ class OpenRouterService {
     if (apiKey.trim().isEmpty || apiKey.contains('YOUR_OPENROUTER_API_KEY')) {
       throw StateError('OpenRouter API 키가 설정되지 않았습니다.');
     }
+    if (!RegExp(r'^[\x21-\x7E]+$').hasMatch(apiKey.trim())) {
+      throw StateError('OpenRouter API 키 형식이 올바르지 않습니다. 키에 한글이나 공백이 없는지 확인해주세요.');
+    }
     final http.Response response;
     try {
       response = await _client
