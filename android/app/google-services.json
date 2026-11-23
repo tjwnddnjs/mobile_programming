@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "948004005764",
+    "project_id": "smartchat-ai-a69d3",
+    "storage_bucket": "smartchat-ai-a69d3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948004005764:android:625f7d348145143fc99fd1",
+        "android_client_info": {
+          "package_name": "com.example.smart_chat_ai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "948004005764-6pv5ndr18es106va7r2rvmfkvc0rmip1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.smart_chat_ai",
+            "certificate_hash": "2d318fd5527d8cb6e8c110cead9530b5074cb0bb"
+          }
+        },
+        {
+          "client_id": "948004005764-8gco92cc8f921kplb6uplfj5tvsfq8aj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAv8lEj1v5v31d1ZYRxlOb1a3FO4PnIdvQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "948004005764-8gco92cc8f921kplb6uplfj5tvsfq8aj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
