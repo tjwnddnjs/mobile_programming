@@ -2,6 +2,7 @@ export 'widgets/system_overlay_entrypoint.dart' show overlayMain;
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'providers/auth_provider.dart';
 import 'providers/contact_provider.dart';
 import 'screens/login_screen.dart';
@@ -12,6 +13,7 @@ import 'screens/contacts_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
   // 인증 상태 로드 (자동 로그인 지원)
   final authProvider = AuthProvider();
