@@ -1,6 +1,6 @@
 // lib/widgets/recommendation_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../services/reply_clipboard.dart';
 
 /// [역할 설명]: '분석/추천' 결과로 수신한 3개의 추천 대화를 렌더링하는 다이얼로그입니다.
 /// [확장성 설계]: 사용자가 추천 답장을 탭했을 때 단순히 클립보드에 복사하는 로직을
@@ -9,23 +9,28 @@ import 'package:flutter/services.dart';
 class RecommendationDialog extends StatelessWidget {
   final String targetName;
   final List<String> recommendations;
+  final bool isSystemOverlay;
 
   const RecommendationDialog({
     super.key,
     required this.targetName,
     required this.recommendations,
+    this.isSystemOverlay = false,
   });
 
   /// [확장용 독립 함수]: 추천 대화 텍스트 적용 로직
   /// (현재: 기기 클립보드 복사 -> 향후: Accessibility Service 자동 타이핑 연결점)
-  void _handleApplyReply(BuildContext context, String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('"$text" 클립보드에 복사되었습니다!'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
+  Future<void> _handleApplyReply(BuildContext context, String text) async {
+    await copyReply(text, isSystemOverlay: isSystemOverlay);
+    if (!context.mounted || ModalRoute.of(context)?.isCurrent != true) return;
+    if (!isSystemOverlay) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reply copied.'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
     Navigator.of(context).pop();
   }
 
@@ -37,7 +42,7 @@ class RecommendationDialog extends StatelessWidget {
         children: [
           const Icon(Icons.auto_awesome, color: Color(0xFF5C6BC0)),
           const SizedBox(width: 8),
-          Expanded(child: Text('$targetName 맞춤 추천 답장', style: const TextStyle(fontSize: 17))),
+          Expanded(child: Text('Suggested replies for $targetName', style: const TextStyle(fontSize: 17))),
         ],
       ),
       content: SingleChildScrollView(
@@ -46,7 +51,7 @@ class RecommendationDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              '원하는 답장을 탭하면 즉시 복사됩니다:',
+              'Tap a reply to copy it.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
@@ -61,7 +66,7 @@ class RecommendationDialog extends StatelessWidget {
                 child: ListTile(
                   leading: CircleAvatar(
                     radius: 14,
-                    backgroundColor: const Color(0xFF5C6BC0).withOpacity(0.15),
+                    backgroundColor: const Color(0xFF5C6BC0).withValues(alpha: 0.15),
                     child: Text('$idx', style: const TextStyle(color: Color(0xFF5C6BC0), fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                   title: Text(reply, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -69,12 +74,12 @@ class RecommendationDialog extends StatelessWidget {
                   onTap: () => _handleApplyReply(context, reply),
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
       ],
     );
   }

@@ -1,5 +1,7 @@
 package com.example.smart_chat_ai
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -35,8 +37,35 @@ class MainActivity : FlutterActivity() {
                 }
                 if (call.method != "prepare") { result.notImplemented(); return@setMethodCallHandler }
                 val overlay = FlutterEngineCache.getInstance().get("myCachedEngine")
-                if (overlay == null) result.error("overlay_unavailable", "오버레이 엔진을 시작하지 못했습니다.", null)
-                else { ImageBridge.register(overlay, applicationContext); result.success(null) }
+                if (overlay == null) result.error("overlay_unavailable", "Could not start the floating assistant.", null)
+                else {
+                    ImageBridge.register(overlay, applicationContext)
+                    registerOverlayClipboard(overlay)
+                    result.success(null)
+                }
+            }
+    }
+
+    private fun registerOverlayClipboard(engine: FlutterEngine) {
+        val context = applicationContext
+        MethodChannel(engine.dartExecutor.binaryMessenger, "com.smartchat.ai/overlay_clipboard")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "copyReply") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val text = call.arguments as? String
+                if (text == null) {
+                    result.error("invalid_reply", "Could not copy the reply.", null)
+                    return@setMethodCallHandler
+                }
+                val clipboard = context.getSystemService(ClipboardManager::class.java)
+                if (clipboard == null) {
+                    result.error("clipboard_unavailable", "Could not open the Android clipboard.", null)
+                    return@setMethodCallHandler
+                }
+                clipboard.setPrimaryClip(ClipData.newPlainText("SmartChat AI", text))
+                result.success(null)
             }
     }
 

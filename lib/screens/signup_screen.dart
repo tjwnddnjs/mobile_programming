@@ -48,11 +48,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🎉 회원가입이 완료되었습니다! 환영합니다.')),
+        const SnackBar(content: Text('Welcome! Your account is ready.')),
       );
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.read<AuthProvider>().lastError ?? '회원가입에 실패했습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.read<AuthProvider>().lastError ?? 'Could not create your account.')));
     }
   }
 
@@ -60,7 +60,7 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('회원가입'),
+        title: const Text('Sign up'),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -74,15 +74,15 @@ class _SignupScreenState extends State<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'SmartChat AI 계정 만들기',
+                  'Create a SmartChat AI account',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                 ),
                 const SizedBox(height: 6),
-                const Text('이메일 계정은 Firebase에 저장됩니다. 프로필과 연락처는 현재 기기에 저장됩니다.',
+                const Text('Firebase handles sign-in. Your profile and contacts are saved on this device.',
                     style: TextStyle(fontSize: 12, color: Colors.black54)),
                 const SizedBox(height: 6),
                 const Text(
-                  '기본 정보를 입력하여 실시간 메신저 코칭을 시작해보세요.',
+                  'Enter your account details to get started.',
                   style: TextStyle(fontSize: 13, color: Colors.grey),
                 ),
                 const SizedBox(height: 28),
@@ -91,11 +91,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
-                    labelText: '이름 (실명 또는 닉네임)',
+                    labelText: 'Name or nickname',
                     prefixIcon: Icon(Icons.person_outline),
                     border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                   ),
-                  validator: (val) => val == null || val.trim().isEmpty ? '이름을 입력해주세요.' : null,
+                  validator: (val) => val == null || val.trim().isEmpty ? 'Enter your name.' : null,
                 ),
                 const SizedBox(height: 14),
 
@@ -104,13 +104,13 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    labelText: '아이디 / 이메일',
+                    labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
                     border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                   ),
                   validator: (val) {
-                    if (val == null || val.trim().isEmpty) return '이메일을 입력해주세요.';
-                    if (!val.contains('@')) return '올바른 이메일 형식을 입력해주세요.';
+                    if (val == null || val.trim().isEmpty) return 'Enter your email.';
+                    if (!val.contains('@')) return 'Enter a valid email address.';
                     return null;
                   },
                 ),
@@ -121,7 +121,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: '비밀번호 (6자 이상)',
+                    labelText: 'Password (at least 6 characters)',
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                     suffixIcon: IconButton(
@@ -129,7 +129,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
-                  validator: (val) => val != null && val.length < 6 ? '비밀번호를 6자 이상 입력해주세요.' : null,
+                  validator: (val) => val != null && val.length < 6 ? 'Enter at least 6 characters.' : null,
                 ),
                 const SizedBox(height: 14),
 
@@ -138,11 +138,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(
-                    labelText: '전화번호 (예: 010-1234-5678)',
+                    labelText: 'Phone number',
                     prefixIcon: Icon(Icons.phone_outlined),
                     border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                   ),
-                  validator: (val) => val == null || val.trim().isEmpty ? '전화번호를 입력해주세요.' : null,
+                  validator: (val) => val == null || val.trim().isEmpty ? 'Enter your phone number.' : null,
                 ),
                 const SizedBox(height: 28),
 
@@ -155,7 +155,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _isLoading ? null : _handleSignup,
-                  child: Text(_isLoading ? '처리 중...' : '회원가입 완료하기', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Text(_isLoading ? 'Creating account…' : 'Create account', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),

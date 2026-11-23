@@ -57,14 +57,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     final target = context.read<ContactProvider>().activeTarget;
     if (target == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('먼저 대화 상대를 선택해주세요.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a contact first.')));
       return;
     }
     try {
       final active = await SystemOverlayService.showSystemOverlay(target: target);
       if (mounted) setState(() => _isOverlayActive = active);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('오버레이를 시작하지 못했습니다.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not start the floating assistant.')));
     }
   }
 
@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('홈'),
+        title: const Text('Home'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -85,10 +85,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               _isOverlayActive ? Icons.layers : Icons.layers_outlined,
               color: _isOverlayActive ? const Color(0xFF5C6BC0) : null,
             ),
-            tooltip: '오버레이 토글',
+            tooltip: 'Toggle floating assistant',
             onPressed: () => _setOverlay(!_isOverlayActive),
           ),
-          IconButton(icon: const Icon(Icons.exit_to_app), tooltip: '앱 나가기',
+          IconButton(icon: const Icon(Icons.exit_to_app), tooltip: 'Exit app',
               onPressed: () => SystemNavigator.pop()),
         ],
       ),
@@ -109,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         radius: 24,
                         backgroundColor: const Color(0xFF5C6BC0),
                         child: Text(
-                          user != null && user.name.isNotEmpty ? user.name[0] : '김',
+                          user != null && user.name.isNotEmpty ? user.name[0] : 'U',
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                       ),
@@ -119,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${user?.name ?? '사용자'} 님 환영합니다',
+                              'Welcome, ${user?.name ?? 'User'}',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             const SizedBox(height: 2),
@@ -152,14 +152,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('현재 AI 분석 대상 (Target)', style: TextStyle(fontSize: 11, color: Color(0xFF5C6BC0), fontWeight: FontWeight.bold)),
+                          const Text('Current analysis contact', style: TextStyle(fontSize: 11, color: Color(0xFF5C6BC0), fontWeight: FontWeight.bold)),
                           Text(
-                            activeTarget != null ? '${activeTarget.name} (${activeTarget.relationship})' : '지정된 상대방 없음',
+                            activeTarget != null ? '${activeTarget.name} (${activeTarget.relationship})' : 'No contact selected',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           if (activeTarget != null)
                             Text(
-                              '성향: ${activeTarget.personality}',
+                              'Style: ${activeTarget.personality}',
                               style: const TextStyle(fontSize: 11, color: Colors.black87),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       onPressed: () {
                         Navigator.push(context, MaterialPageRoute(builder: (ctx) => const ContactsScreen()));
                       },
-                      child: const Text('변경'),
+                      child: const Text('Change'),
                     ),
                   ],
                 ),
@@ -184,11 +184,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: SwitchListTile(
-                  title: const Text('AI 분석 오버레이 켜기', style: TextStyle(fontWeight: FontWeight.w600)),
+                  title: const Text('Enable floating assistant', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(
                     _isOverlayActive 
-                      ? '백그라운드 & 앱 종료 시에도 화면 위에 플로팅 위젯이 유지됩니다. (SYSTEM_ALERT_WINDOW 활성)' 
-                      : '오버레이가 꺼져 있습니다.',
+                      ? 'The floating assistant can appear over other apps.'
+                      : 'The floating assistant is off.',
                     style: const TextStyle(fontSize: 12),
                   ),
                   value: _isOverlayActive,
@@ -201,24 +201,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: Column(children: [
                   ListTile(
                     leading: const Icon(Icons.person_outline, color: Color(0xFF5C6BC0)),
-                    title: const Text('내 정보 수정'),
-                    subtitle: const Text('내 프로필과 계정 관리'),
+                    title: const Text('Edit profile'),
+                    subtitle: const Text('Manage your profile and AI preferences'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.pushNamed(context, '/profile'),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.auto_awesome, color: Color(0xFF5C6BC0)),
-                    title: const Text('대화 분석 / 추천'),
-                    subtitle: const Text('대화 사진으로 맞춤 답장 받기'),
+                    title: const Text('Reply Suggestions'),
+                    subtitle: const Text('Get suggested replies from screenshots'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalysisScreen())),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.balance, color: Colors.deepOrange),
-                    title: const Text('문철 · 과실 분석'),
-                    subtitle: const Text('대화 속 갈등과 해결 방향 분석하기'),
+                    title: const Text('Moonchul: Conflict Analysis'),
+                    subtitle: const Text('Understand a conflict and find a way forward'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MoonchulScreen())),
                   ),
@@ -236,27 +236,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('💡 플로팅 오버레이 3대 핵심 기능', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const Text('Floating assistant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                       const SizedBox(height: 12),
                       _buildFeatureRow(
                         num: '1',
                         color: const Color(0xFF5C6BC0),
-                        title: '분석 / 추천',
-                        desc: '화면 캡처 또는 사진 첨부 후 타겟 성향에 맞는 답장을 추천합니다. 화면 캡처에는 Android의 승인이 필요합니다.',
+                        title: 'Reply Suggestions',
+                        desc: 'Capture the screen or attach images to get tailored replies. Android asks for permission to capture the screen.',
                       ),
                       const SizedBox(height: 10),
                       _buildFeatureRow(
                         num: '2',
                         color: Colors.redAccent,
-                        title: '문철 (과실 분석)',
-                        desc: '갤러리/카메라에서 대화 캡처 사진을 복수 첨부하여 나 : 상대방 과실 비율(예: 30 : 70) 및 원인 분석과 개선 코멘트를 다이얼로그로 확인합니다.',
+                        title: 'Moonchul',
+                        desc: 'Attach conversation screenshots to see what caused the conflict and get suggestions for resolving it.',
                       ),
                       const SizedBox(height: 10),
                       _buildFeatureRow(
                         num: '3',
                         color: Colors.grey.shade700,
-                        title: '나가기',
-                        desc: '확장된 메뉴를 즉시 닫고 기본 플로팅 아이콘 상태로 복귀합니다.',
+                        title: 'Close menu',
+                        desc: 'Close the expanded menu and return to the floating icon.',
                       ),
                     ],
                   ),

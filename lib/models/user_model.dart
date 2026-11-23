@@ -3,6 +3,24 @@ import 'dart:convert';
 
 /// [역할 설명]: 사용자 인증 및 프로필 정보를 캡슐화한 데이터 모델 클래스입니다.
 /// SharedPreferences나 로컬 보안 스토리지에 JSON 형태로 안전하게 직렬화/역직렬화할 수 있도록 지원합니다.
+enum JudgmentStyle {
+  balanced('Balanced', 'Weigh facts and emotional impact together.'),
+  thinking(
+      'T (Thinking)', 'Emphasize facts, agreements, and practical next steps.'),
+  feeling('F (Feeling)',
+      'Emphasize emotional impact, empathy, and ways to repair trust.');
+
+  const JudgmentStyle(this.label, this.description);
+
+  final String label;
+  final String description;
+
+  static JudgmentStyle fromStorage(Object? value) {
+    return values.firstWhere((style) => style.name == value,
+        orElse: () => balanced);
+  }
+}
+
 class UserModel {
   final String id;
   final String email;
@@ -13,6 +31,9 @@ class UserModel {
   final String gender;
   final String occupation;
   final String bio;
+  final String replyTone;
+  final bool useEmojis;
+  final JudgmentStyle judgmentStyle;
 
   UserModel({
     required this.id,
@@ -24,6 +45,9 @@ class UserModel {
     this.gender = '',
     this.occupation = '',
     this.bio = '',
+    this.replyTone = '',
+    this.useEmojis = false,
+    this.judgmentStyle = JudgmentStyle.balanced,
   });
 
   /// 정보 수정(이름, 전화번호, 비밀번호 등) 시 불변성을 유지하며 사본을 생성하는 메서드
@@ -35,6 +59,9 @@ class UserModel {
     String? gender,
     String? occupation,
     String? bio,
+    String? replyTone,
+    bool? useEmojis,
+    JudgmentStyle? judgmentStyle,
   }) {
     return UserModel(
       id: id,
@@ -46,6 +73,9 @@ class UserModel {
       gender: gender ?? this.gender,
       occupation: occupation ?? this.occupation,
       bio: bio ?? this.bio,
+      replyTone: replyTone ?? this.replyTone,
+      useEmojis: useEmojis ?? this.useEmojis,
+      judgmentStyle: judgmentStyle ?? this.judgmentStyle,
     );
   }
 
@@ -60,6 +90,9 @@ class UserModel {
       'gender': gender,
       'occupation': occupation,
       'bio': bio,
+      'replyTone': replyTone,
+      'useEmojis': useEmojis,
+      'judgmentStyle': judgmentStyle.name,
     };
   }
 
@@ -74,10 +107,14 @@ class UserModel {
       gender: map['gender'] ?? '',
       occupation: map['occupation'] ?? '',
       bio: map['bio'] ?? '',
+      replyTone: map['replyTone'] is String ? map['replyTone'] as String : '',
+      useEmojis: map['useEmojis'] == true,
+      judgmentStyle: JudgmentStyle.fromStorage(map['judgmentStyle']),
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory UserModel.fromJson(String source) => UserModel.fromMap(json.decode(source));
+  factory UserModel.fromJson(String source) =>
+      UserModel.fromMap(json.decode(source));
 }

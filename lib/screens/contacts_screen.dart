@@ -16,34 +16,34 @@ class ContactsScreen extends StatelessWidget {
     final relCtrl = TextEditingController(text: contact?.relationship ?? '');
     final memoCtrl = TextEditingController(text: contact?.memo ?? '');
     final personalityCtrl = TextEditingController(
-      text: contact?.personality ?? '직설적이며 마감 시간에 민감함',
+      text: contact?.personality ?? 'Direct and attentive to deadlines.',
     );
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(contact == null ? '상대방 추가' : '상대방 정보 수정'),
+        title: Text(contact == null ? 'Add contact' : 'Edit contact'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '이름 (예: 팀장님)')),
-              TextField(controller: relCtrl, decoration: const InputDecoration(labelText: '관계 (예: 직속 상사)')),
-              TextField(controller: memoCtrl, decoration: const InputDecoration(labelText: '특징/메모 (예: 두괄식 보고 선호)')),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name (e.g., Manager)')),
+              TextField(controller: relCtrl, decoration: const InputDecoration(labelText: 'Relationship (e.g., manager)')),
+              TextField(controller: memoCtrl, decoration: const InputDecoration(labelText: 'Notes (e.g., prefers short updates)')),
               const SizedBox(height: 8),
               TextField(
                 controller: personalityCtrl,
                 maxLines: 2,
                 decoration: const InputDecoration(
-                  labelText: 'AI 맞춤형 성향',
-                  helperText: '오버레이 AI 분석 시 프롬프트 문맥으로 주입됩니다.',
+                  labelText: 'Communication style',
+                  helperText: 'Used to tailor suggested replies.',
                 ),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5C6BC0), foregroundColor: Colors.white),
             onPressed: () {
@@ -65,7 +65,7 @@ class ContactsScreen extends StatelessWidget {
               }
               Navigator.pop(ctx);
             },
-            child: const Text('저장'),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -78,14 +78,14 @@ class ContactsScreen extends StatelessWidget {
     final contacts = contactProv.contacts;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('상대방 (Target) 관리')),
+      appBar: AppBar(title: const Text('Manage Contacts')),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF5C6BC0),
         onPressed: () => _showAddOrEditDialog(context),
         child: const Icon(Icons.person_add, color: Colors.white),
       ),
       body: contacts.isEmpty
-          ? const Center(child: Text('등록된 상대방이 없습니다. 우측 하단 버튼을 눌러 추가하세요.'))
+          ? const Center(child: Text('No contacts yet. Tap + to add one.'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: contacts.length,
@@ -140,7 +140,7 @@ class ContactsScreen extends StatelessWidget {
                                   children: [
                                     Icon(Icons.check_circle, size: 14, color: Color(0xFF5C6BC0)),
                                     SizedBox(width: 4),
-                                    Text('분석 대상(Target)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0))),
+                                    Text('Selected contact', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0))),
                                   ],
                                 ),
                               ),
@@ -157,10 +157,10 @@ class ContactsScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('🧠 AI 성향: ${c.personality}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text('Style: ${c.personality}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                               if (c.memo.isNotEmpty) ...[
                                 const SizedBox(height: 4),
-                                Text('📝 메모: ${c.memo}', style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                                Text('Notes: ${c.memo}', style: const TextStyle(fontSize: 11, color: Colors.black54)),
                               ],
                             ],
                           ),
@@ -179,11 +179,11 @@ class ContactsScreen extends StatelessWidget {
                               onPressed: () {
                                 context.read<ContactProvider>().setActiveTarget(c.id);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("'${c.name}' 님이 AI 대화 분석 대상으로 지정되었습니다.")),
+                                  SnackBar(content: Text("${c.name} is now the selected contact.")),
                                 );
                               },
                               icon: const Icon(Icons.gps_fixed, size: 16),
-                              label: Text(isTarget ? '분석 대상 활성화됨' : '대화 분석 대상으로 지정'),
+                              label: Text(isTarget ? 'Selected contact' : 'Set as analysis contact'),
                             ),
                             Row(
                               children: [
