@@ -36,8 +36,8 @@ class SystemOverlayService {
     // 시스템 오버레이 윈도우 생성 (entryPoint: overlayMain)
     await FlutterOverlayWindow.showOverlay(
       enableDrag: true,
-      overlayTitle: 'SmartChat AI 어시스턴트',
-      overlayContent: '실시간 대화 코칭 및 문철 오버레이 동작 중',
+      overlayTitle: 'SmartChat AI Assistant',
+      overlayContent: 'The floating assistant is active',
       flag: OverlayFlag.defaultFlag,
       alignment: OverlayAlignment.centerLeft,
       visibility: NotificationVisibility.visibilityPublic,

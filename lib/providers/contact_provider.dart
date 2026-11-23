@@ -13,8 +13,7 @@ class ContactProvider extends ChangeNotifier {
   String? _userId;
 
   ContactProvider({StorageService? storageService})
-      : _storageService = storageService ?? StorageService() {
-  }
+      : _storageService = storageService ?? StorageService();
 
   void setUser(String? userId) {
     if (_userId == userId) return;

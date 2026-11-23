@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || pw.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('아이디(이메일)와 비밀번호를 모두 입력해주세요.')),
+        const SnackBar(content: Text('Enter your email and password.')),
       );
       return;
     }
@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       Navigator.pushReplacementNamed(context, '/home');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.read<AuthProvider>().lastError ?? '이메일 또는 비밀번호가 올바르지 않습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.read<AuthProvider>().lastError ?? 'The email or password is incorrect.')));
     }
   }
 
@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       navigator.pushReplacementNamed('/home');
       if (auth.needsProfileSetup) navigator.pushNamed('/profile');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(auth.lastError ?? 'Google 로그인에 실패했습니다.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(auth.lastError ?? 'Google sign-in failed.')));
     }
   }
 
@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 76,
                     height: 76,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5C6BC0).withOpacity(0.12),
+                      color: const Color(0xFF5C6BC0).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: const Icon(Icons.chat_bubble_rounded, size: 44, color: Color(0xFF5C6BC0)),
@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  '실시간 메신저 분석 & 오버레이 어시스턴트',
+                  'Reply suggestions and conflict analysis',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: Colors.grey),
                 ),
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    labelText: '이메일 / 아이디',
+                    labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
                     border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                   ),
@@ -120,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: '비밀번호',
+                    labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                     suffixIcon: IconButton(
@@ -140,14 +140,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _isLoading ? null : _handleLogin,
-                  child: Text(_isLoading ? '로그인 중...' : '로그인', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Text(_isLoading ? 'Signing in…' : 'Sign in', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 14),
 
                 OutlinedButton.icon(
                   onPressed: _isLoading ? null : _handleGoogleLogin,
                   icon: const Icon(Icons.account_circle_outlined),
-                  label: const Text('Google로 계속하기'),
+                  label: const Text('Continue with Google'),
                 ),
                 const SizedBox(height: 14),
 
@@ -155,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('아직 계정이 없으신가요?', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                    const Text('New to SmartChat AI?', style: TextStyle(fontSize: 13, color: Colors.grey)),
                     TextButton(
                       onPressed: () {
                         Navigator.push(
@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           MaterialPageRoute(builder: (context) => const SignupScreen()),
                         );
                       },
-                      child: const Text('회원가입하기', style: TextStyle(color: Color(0xFF5C6BC0), fontWeight: FontWeight.bold)),
+                      child: const Text('Sign up', style: TextStyle(color: Color(0xFF5C6BC0), fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

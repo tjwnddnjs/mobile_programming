@@ -1,19 +1,42 @@
 # SmartChat AI
 
-Flutter 대화 이미지 분석 데모입니다.
+SmartChat AI is an Android conversation assistant built with Flutter. It reads conversation screenshots to suggest replies and helps users understand and respond to disagreements through **Moonchul**, its conflict analysis feature.
 
-## OpenRouter 설정
+## What you can do
 
-OpenRouter API 키를 발급한 뒤 빌드 또는 실행할 때 전달합니다. 키를 소스 파일에 넣지 마세요.
+- **Reply Suggestions.** Select a contact and attach a conversation screenshot. SmartChat AI considers the conversation, your relationship and notes about the contact, and your saved writing preferences. It returns three replies you can tap to copy. Add **Additional instructions** for the current request, for example, “Politely decline and suggest Friday.” A request can override your usual reply style.
+- **Moonchul.** Attach up to five screenshots in chronological order, mark which side contains your messages, and optionally describe what happened. Results can include the main issue, supporting statements, an estimate of each person's communication responsibility, steps to resolve the conflict, and suggested replies. Choose **I cannot tell** to get participant analysis without assigning a side to you. Moonchul can defer its assessment when the evidence is insufficient. The estimates are AI interpretations of the visible conversation.
+- **AI preferences.** Go to **My Profile → Edit profile → AI preferences** to save a default reply tone, whether to use emojis, and a Moonchul analysis style. **Balanced** weighs facts and impact together, **T (Thinking)** emphasizes facts and practical next steps, and **F (Feeling)** emphasizes emotional impact and repair. All styles use the same standards for evidence and uncertainty. Preferences are stored on the device for the signed-in account.
+- **Floating assistant.** Enable it from Home and grant Android permission to display over other apps. From a messenger, use **Reply Suggestions** to capture the current screen or attach up to three images, or open **Moonchul**. Android asks for screen capture permission, and you review the images before sending them for analysis. Replies are copied manually and can be edited before sending in your messenger.
+
+## Run on Android
+
+1. Install Flutter and the Android SDK, then run `flutter doctor`. Connect an Android device with debugging enabled or start an emulator.
+2. Configure a Firebase Android app for the package `com.example.smart_chat_ai`. Place its configuration at `android/app/google-services.json`. Enable Email/Password authentication. To use Google sign-in, also enable Google and register the signing certificate for your Android build with Firebase.
+3. From this folder, run:
+
+   ```sh
+   flutter pub get
+   flutter devices
+   flutter run --dart-define=OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
+   ```
+
+   Replace `YOUR_OPENROUTER_API_KEY` with your development key. The default OpenRouter model is `openrouter/free`. To select a different model, add `--dart-define=OPENROUTER_MODEL=provider/model`. The model must accept images and support the structured responses used by the selected feature.
+
+The key passed through `--dart-define` is embedded in the Android build. Use this setup for development and demos. A public release should use a backend to manage the key.
+
+## How the app works
+
+Flutter renders the screens, and Provider manages authentication and contact state. Firebase Authentication handles email and Google sign-in. SharedPreferences stores profiles, contacts, and preferences on the device. Kotlin code connects Flutter to Android's image picker and screen capture. The app sends the selected images and relevant inputs to OpenRouter and validates the structured response before displaying it.
+
+Reply requests include the selected contact and relevant profile information, preferences, and any additional instructions. Moonchul sends the images, analysis style and context, plus the selected side and contact details when applicable. Review what appears in the screenshots before analyzing them.
+
+## Development checks
 
 ```sh
-flutter run --dart-define=OPENROUTER_API_KEY=발급받은_키
+flutter analyze
+flutter test
+flutter build apk --debug
 ```
 
-분석/추천과 문철 모두 `openrouter/free`를 사용합니다. 이미지 입력을 지원하는 무료 모델이 사용 가능해야 하며, 무료 사용량 및 서비스 가용성에 제한이 있습니다. 오류가 발생하면 샘플 결과 대신 오류를 표시합니다. 키는 앱 바이너리에 포함되므로 이 방식은 개인 데모용입니다. 배포용 앱은 서버에서 키와 인증을 관리해야 합니다. 대화 이미지와 상대방 정보는 분석을 위해 OpenRouter로 전송됩니다.
-
-## 플랫폼 현황
-
-Android에서 오버레이의 분석 / 추천 메뉴로 화면 캡처 또는 사진 첨부를 선택할 수 있습니다. 화면 캡처는 Android 시스템의 화면 공유 승인을 거쳐 실행됩니다. 캡처한 화면과 선택한 사진은 분석 전에 미리보기로 확인할 수 있습니다. 문철에서는 사진을 여러 장 선택할 수 있습니다. 이 기능은 아직 실기기 검증이 필요합니다.
-
-iOS 프로젝트가 현재 저장소에 없으며 iPhone 배포는 macOS와 Xcode, 서명이 필요합니다. iOS에서는 Android와 같은 다른 앱 위의 상시 플로팅 오버레이를 제공할 수 없어 별도의 사용 흐름이 필요합니다.
+To check the workflow on a device with test credentials, save AI preferences, reopen My Profile, then try both AI features from Home and from the floating assistant. In Reply Suggestions, verify that the keyboard opens in the floating preview and that a new request starts without the previous additional instructions.

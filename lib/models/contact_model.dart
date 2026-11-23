@@ -9,7 +9,7 @@ class ContactModel {
   final String name;
   final String relationship; // 예: 직속 상사, 클라이언트, 입사 동기
   final String memo;         // 대화 시 유의점이나 배경 상황
-  final String personality;  // AI 맞춤형 성향 (예: "직설적이며 마감 시간에 민감함")
+  final String personality;  // Communication style (예: "Direct and attentive to deadlines.")
   final bool isAnalysisTarget; // 오버레이 위젯에서 현재 분석 기준으로 활성화되었는지 여부
 
   ContactModel({
@@ -17,7 +17,7 @@ class ContactModel {
     required this.name,
     required this.relationship,
     this.memo = '',
-    this.personality = '보통 성향 (상황에 맞춰 유연하게 대처)',
+    this.personality = 'Flexible communication style',
     this.isAnalysisTarget = false,
   });
 
@@ -55,7 +55,7 @@ class ContactModel {
       name: map['name'] ?? '',
       relationship: map['relationship'] ?? '',
       memo: map['memo'] ?? '',
-      personality: map['personality'] ?? '보통 성향',
+      personality: map['personality'] ?? 'Flexible',
       isAnalysisTarget: map['isAnalysisTarget'] ?? false,
     );
   }
