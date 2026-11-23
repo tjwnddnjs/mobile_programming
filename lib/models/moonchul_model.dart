@@ -20,7 +20,7 @@ class MoonchulResult {
       required this.reconciliationAdvice,
       this.canJudge = true,
       this.summary = '',
-      this.confidence = '낮음',
+      this.confidence = 'Low',
       this.evidence = const [],
       this.missingContext = const [],
       this.recommendedReplies = const []});
@@ -28,8 +28,9 @@ class MoonchulResult {
   factory MoonchulResult.fromMap(Map<String, dynamic> map) {
     String requiredText(String key) {
       final value = map[key];
-      if (value is! String || value.trim().isEmpty)
-        throw FormatException('누락된 분석 항목: $key');
+      if (value is! String || value.trim().isEmpty) {
+        throw FormatException('Missing analysis field: $key');
+      }
       return value.trim();
     }
 
@@ -38,7 +39,7 @@ class MoonchulResult {
       if (value == null) return const [];
       if (value is! List ||
           value.any((v) => v is! String || v.trim().isEmpty)) {
-        throw FormatException('잘못된 분석 항목: $key');
+        throw FormatException('Invalid analysis field: $key');
       }
       return value.cast<String>();
     }
@@ -60,10 +61,11 @@ class MoonchulResult {
         a > 100 ||
         b > 100 ||
         a + b != 100) {
-      throw const FormatException('책임 비율의 합은 100이어야 합니다.');
+      throw const FormatException('Responsibility percentages must add up to 100.');
     }
-    if (map.containsKey('canJudge') && map['canJudge'] is! bool)
-      throw const FormatException('판단 가능 여부 오류');
+    if (map.containsKey('canJudge') && map['canJudge'] is! bool) {
+      throw const FormatException('Invalid assessment status');
+    }
     return MoonchulResult(
         myRatio: a,
         otherRatio: b,
@@ -72,7 +74,7 @@ class MoonchulResult {
         reconciliationAdvice: requiredText('reconciliationAdvice'),
         canJudge: map['canJudge'] as bool? ?? true,
         summary: map['summary'] as String? ?? '',
-        confidence: map['confidence'] as String? ?? '낮음',
+        confidence: map['confidence'] as String? ?? 'Low',
         evidence: strings('evidence'),
         missingContext: strings('missingContext'),
         recommendedReplies: strings('recommendedReplies'));
@@ -89,7 +91,7 @@ class ConversationParticipant {
   factory ConversationParticipant.fromMap(Map<String, dynamic> map) {
     String text(String key) {
       final value = map[key];
-      if (value is! String || value.trim().isEmpty) throw FormatException('잘못된 인물 정보: $key');
+      if (value is! String || value.trim().isEmpty) throw FormatException('Invalid participant field: $key');
       return value.trim();
     }
     return ConversationParticipant(label: text('label'), identification: text('identification'), analysis: text('analysis'));
@@ -112,31 +114,31 @@ class AnonymousMoonchulResult {
   factory AnonymousMoonchulResult.fromMap(Map<String, dynamic> map) {
     String text(String key) {
       final value = map[key];
-      if (value is! String || value.trim().isEmpty) throw FormatException('잘못된 분석 항목: $key');
+      if (value is! String || value.trim().isEmpty) throw FormatException('Invalid analysis field: $key');
       return value.trim();
     }
     List<String> strings(String key) {
       final value = map[key];
       if (value is! List || value.any((e) => e is! String || e.trim().isEmpty)) {
-        throw FormatException('잘못된 분석 항목: $key');
+        throw FormatException('Invalid analysis field: $key');
       }
       return value.cast<String>();
     }
     final canJudge = map['canJudge'];
     final rawParticipants = map['participants'];
-    if (canJudge is! bool || rawParticipants is! List) throw const FormatException('잘못된 분석 형식');
+    if (canJudge is! bool || rawParticipants is! List) throw const FormatException('Invalid analysis format');
     final participants = rawParticipants.map((entry) {
-      if (entry is! Map) throw const FormatException('잘못된 인물 형식');
+      if (entry is! Map) throw const FormatException('Invalid participant format');
       return ConversationParticipant.fromMap(Map<String, dynamic>.from(entry));
     }).toList();
     final confidence = text('confidence');
     final evidence = strings('evidence');
     final missing = strings('missingContext');
-    if (!['낮음', '보통', '높음'].contains(confidence) ||
+    if (!['Low', 'Medium', 'High'].contains(confidence) ||
         participants.map((p) => p.label).toSet().length != participants.length ||
         (canJudge && (participants.length < 2 || evidence.isEmpty)) ||
         (!canJudge && missing.isEmpty)) {
-      throw const FormatException('인물 분석 정보가 부족합니다.');
+      throw const FormatException('The participant analysis is incomplete.');
     }
     return AnonymousMoonchulResult(canJudge: canJudge, summary: text('summary'),
       confidence: confidence, participants: participants, evidence: evidence,

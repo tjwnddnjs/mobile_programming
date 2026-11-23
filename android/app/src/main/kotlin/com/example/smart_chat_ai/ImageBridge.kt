@@ -20,13 +20,13 @@ object ImageBridge {
                 if (call.method != "captureScreen" && call.method != "pickImage" && call.method != "pickImages") {
                     result.notImplemented(); return@setMethodCallHandler
                 }
-                if (pending != null) { result.error("busy", "이미 사진을 가져오는 중입니다.", null); return@setMethodCallHandler }
+                if (pending != null) { result.error("busy", "An image request is already in progress.", null); return@setMethodCallHandler }
                 pending = result
                 try {
                     context.startActivity(Intent(context, ImageBridgeActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         .putExtra("operation", call.method))
-                } catch (e: Exception) { fail("launch_failed", "사진 가져오기를 시작하지 못했습니다.") }
+                } catch (e: Exception) { fail("launch_failed", "Could not start the image request.") }
             }
     }
     fun success(value: Any?) { pending?.success(value); pending = null }
@@ -43,9 +43,9 @@ class ImageBridgeActivity : Activity() {
                 startActivityForResult(manager.createScreenCaptureIntent(), 1)
             } else {
                 val picker = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*"; addCategory(Intent.CATEGORY_OPENABLE); putExtra(Intent.EXTRA_ALLOW_MULTIPLE, intent.getStringExtra("operation") == "pickImages") }
-                startActivityForResult(Intent.createChooser(picker, "사진 선택"), 2)
+                startActivityForResult(Intent.createChooser(picker, "Choose images"), 2)
             }
-        } catch (e: Exception) { ImageBridge.fail("launch_failed", "시스템 선택 화면을 열지 못했습니다."); finish() }
+        } catch (e: Exception) { ImageBridge.fail("launch_failed", "Could not open the system picker."); finish() }
     }
     @Deprecated("Deprecated in Android")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -56,7 +56,7 @@ class ImageBridgeActivity : Activity() {
                 val service = Intent(this, ScreenCaptureForegroundService::class.java)
                     .putExtra("resultCode", resultCode).putExtra("data", data)
                 if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(service) else startService(service)
-            } catch (e: Exception) { ImageBridge.fail("capture_failed", "화면 캡처를 시작하지 못했습니다.") }
+            } catch (e: Exception) { ImageBridge.fail("capture_failed", "Could not start screen capture.") }
             finish()
         } else if (requestCode == 2) {
             val uris = if (data.clipData != null) {
@@ -92,7 +92,7 @@ class ImageBridgeActivity : Activity() {
                                 if (encoded.size <= 450_000) break
                                 if (quality > 58) { quality -= 10; continue }
                                 if (minOf(working.width, working.height) < 300) {
-                                    throw IllegalArgumentException("사진 용량을 줄이지 못했습니다.")
+                                    throw IllegalArgumentException("Could not reduce the image size.")
                                 }
                                 val smaller = Bitmap.createScaledBitmap(working,
                                     maxOf(1, working.width * 4 / 5), maxOf(1, working.height * 4 / 5), true)
@@ -113,7 +113,7 @@ class ImageBridgeActivity : Activity() {
                     }
                 } catch (e: Exception) {
                     runOnUiThread {
-                        ImageBridge.fail("image_failed", "선택한 사진을 읽지 못했습니다. 사진을 기기에 다운로드한 뒤 다시 선택해주세요.")
+                        ImageBridge.fail("image_failed", "Could not read the selected images. Download them to this device and try again.")
                         finish()
                     }
                 }

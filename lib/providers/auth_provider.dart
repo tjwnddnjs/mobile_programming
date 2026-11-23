@@ -44,10 +44,13 @@ class AuthProvider extends ChangeNotifier {
     final source = saved ?? migrated;
     _currentUser = UserModel(
       id: user.uid, email: user.email ?? source?.email ?? '',
-      name: source?.name ?? user.displayName ?? '사용자',
+      name: source?.name ?? user.displayName ?? 'User',
       phone: source?.phone ?? user.phoneNumber ?? '', password: '',
       age: source?.age ?? '', gender: source?.gender ?? '',
       occupation: source?.occupation ?? '', bio: source?.bio ?? '',
+      replyTone: source?.replyTone ?? '',
+      useEmojis: source?.useEmojis ?? false,
+      judgmentStyle: source?.judgmentStyle ?? JudgmentStyle.balanced,
     );
     if (migrated != null) await _storageService.copyContactsToUser(migrated.id, user.uid);
     await _storageService.saveUserProfile(_currentUser!);
@@ -56,13 +59,13 @@ class AuthProvider extends ChangeNotifier {
 
   String _authMessage(firebase.FirebaseAuthException error) {
     switch (error.code) {
-      case 'email-already-in-use': return '이미 가입된 이메일입니다. 기존 로그인 방식으로 로그인해주세요.';
-      case 'invalid-email': return '올바른 이메일 주소를 입력해주세요.';
-      case 'weak-password': return '비밀번호가 너무 짧거나 취약합니다.';
-      case 'network-request-failed': return '네트워크 연결을 확인해주세요.';
-      case 'too-many-requests': return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
-      case 'account-exists-with-different-credential': return '같은 이메일로 가입된 계정이 있습니다. 기존 방식으로 로그인해주세요.';
-      default: return '로그인에 실패했습니다 (${error.code}).';
+      case 'email-already-in-use': return 'An account already exists with that email. Use your original sign-in method.';
+      case 'invalid-email': return 'Enter a valid email address.';
+      case 'weak-password': return 'Choose a stronger password.';
+      case 'network-request-failed': return 'Check your internet connection.';
+      case 'too-many-requests': return 'Too many attempts. Please try again later.';
+      case 'account-exists-with-different-credential': return 'An account already exists with that email. Use your original sign-in method.';
+      default: return 'Authentication failed (${error.code}).';
     }
   }
 
@@ -72,7 +75,7 @@ class AuthProvider extends ChangeNotifier {
       await GoogleSignIn.instance.initialize();
       final account = await GoogleSignIn.instance.authenticate();
       final token = account.authentication.idToken;
-      if (token == null) throw StateError('Google 인증 정보를 받지 못했습니다.');
+      if (token == null) throw StateError('Google sign-in did not return a credential.');
       final credential = firebase.GoogleAuthProvider.credential(idToken: token);
       final result = await _firebase.signInWithCredential(credential);
       await _setFirebaseUser(result.user!);
@@ -82,7 +85,7 @@ class AuthProvider extends ChangeNotifier {
     } on firebase.FirebaseAuthException catch (error) {
       lastError = _authMessage(error);
     } catch (_) {
-      lastError = 'Google 로그인이 취소되었거나 연결하지 못했습니다. 설정을 확인해주세요.';
+      lastError = 'Google sign-in was canceled or could not connect. Check your setup.';
     }
     return false;
   }
@@ -146,6 +149,9 @@ class AuthProvider extends ChangeNotifier {
     String? gender,
     String? occupation,
     String? bio,
+    String? replyTone,
+    bool? useEmojis,
+    JudgmentStyle? judgmentStyle,
   }) async {
     if (_currentUser == null) return;
 
@@ -156,6 +162,9 @@ class AuthProvider extends ChangeNotifier {
       gender: gender,
       occupation: occupation,
       bio: bio,
+      replyTone: replyTone,
+      useEmojis: useEmojis,
+      judgmentStyle: judgmentStyle,
     );
 
     await _storageService.saveUserSession(_currentUser!);

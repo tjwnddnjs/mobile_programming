@@ -63,18 +63,18 @@ class StorageService {
       return [
         ContactModel(
           id: 'contact_1',
-          name: '팀장님',
-          relationship: '직속 상사 (마케팅본부)',
-          memo: '마감 기한을 가장 중시하며, 두괄식 보고를 선호하심.',
-          personality: '직설적이고 성과 중심적이며 빠른 피드백을 요구함',
+          name: 'Manager',
+          relationship: 'Direct manager (Marketing)',
+          memo: 'Values deadlines and prefers updates that lead with the conclusion.',
+          personality: 'Direct, results-oriented, and prefers prompt updates.',
           isAnalysisTarget: true, // 기본 분석 대상으로 지정
         ),
         ContactModel(
           id: 'contact_2',
-          name: '이민수 동기',
-          relationship: '입사 동기 (디자인팀)',
-          memo: '사적인 대화가 편안하지만 업무 요청 시에는 명확한 자료 필요.',
-          personality: '수용적이고 감성적이며 친근한 어투 사용',
+          name: 'Alex (Coworker)',
+          relationship: 'Coworker (Design)',
+          memo: 'Easygoing in casual chats and prefers clear details for work requests.',
+          personality: 'Warm, receptive, and friendly.',
           isAnalysisTarget: false,
         ),
       ];

@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/contact_provider.dart';
+import '../providers/auth_provider.dart';
+import '../models/user_model.dart';
+import 'reply_instructions_field.dart';
 import '../services/screen_capture_service.dart';
 import '../services/openrouter_service.dart';
 import 'recommendation_dialog.dart';
@@ -33,17 +36,17 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
     final source = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('분석할 사진 선택'),
+        title: const Text('Choose a conversation image'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(leading: const Icon(Icons.screenshot), title: const Text('화면 캡처'), onTap: () => Navigator.pop(context, 'capture')),
-          ListTile(leading: const Icon(Icons.photo_library), title: const Text('사진 첨부'), onTap: () => Navigator.pop(context, 'gallery')),
+          ListTile(leading: const Icon(Icons.screenshot), title: const Text('Capture screen'), onTap: () => Navigator.pop(context, 'capture')),
+          ListTile(leading: const Icon(Icons.photo_library), title: const Text('Attach image'), onTap: () => Navigator.pop(context, 'gallery')),
         ]),
       ),
     );
     if (source == null || !mounted) return;
     final target = context.read<ContactProvider>().activeTarget;
     if (target == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('먼저 대화 상대를 선택해주세요.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a contact first.')));
       return;
     }
     setState(() => _isProcessing = true);
@@ -54,13 +57,22 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
       } else {
         image = await ScreenCaptureService.pickImageAsBase64();
       }
-      if (image == null) return;
-      final recommendations = await _openRouterService.getChatRecommendations(base64Screenshot: image, targetContact: target);
+      if (image == null || !mounted) return;
+      final instructions = await showReplyPreview(
+        context, images: [image], isCapture: source == 'capture',
+      );
+      if (instructions == null || !mounted) return;
+      final recommendations = await _openRouterService.getChatRecommendations(
+        base64Screenshot: image,
+        targetContact: target,
+        user: context.read<AuthProvider>().currentUser,
+        additionalInstructions: instructions,
+      );
       if (!mounted) return;
       await showDialog(context: context, builder: (_) => RecommendationDialog(targetName: target.name, recommendations: recommendations));
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error is StateError ? error.message : '사진을 가져오지 못했습니다.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error is StateError ? error.message : 'Could not open the image.')));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -77,6 +89,8 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
       builder: (ctx) => MoonchulDialog(
         targetContact: target,
         openRouterService: _openRouterService,
+        judgmentStyle: context.read<AuthProvider>().currentUser?.judgmentStyle ??
+            JudgmentStyle.balanced,
       ),
     );
   }
@@ -193,7 +207,7 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
           ),
           onPressed: _handleAnalyzeAndRecommend,
           icon: const Icon(Icons.auto_awesome, size: 18),
-          label: const Text('분석 / 추천', style: TextStyle(fontWeight: FontWeight.bold)),
+          label: const Text('Reply Suggestions', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         const SizedBox(height: 8),
 
@@ -207,7 +221,7 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
           ),
           onPressed: _handleMoonchul,
           icon: const Icon(Icons.balance, size: 18),
-          label: const Text('문철 (과실 분석)', style: TextStyle(fontWeight: FontWeight.bold)),
+          label: const Text('Moonchul', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         const SizedBox(height: 8),
 
@@ -221,7 +235,7 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
           ),
           onPressed: _handleExit,
           icon: const Icon(Icons.arrow_back, size: 16),
-          label: const Text('나가기', style: TextStyle(fontSize: 12)),
+          label: const Text('Close menu', style: TextStyle(fontSize: 12)),
         ),
       ],
     );

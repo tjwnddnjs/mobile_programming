@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import '../services/screen_capture_service.dart';
+import '../services/reply_clipboard.dart';
 import '../models/contact_model.dart';
 import '../models/moonchul_model.dart';
+import '../models/user_model.dart';
 import '../services/openrouter_service.dart';
 
 class MoonchulDialog extends StatefulWidget {
@@ -12,12 +14,14 @@ class MoonchulDialog extends StatefulWidget {
   final OpenRouterService openRouterService;
   final bool isSystemOverlay;
   final bool isPage;
+  final JudgmentStyle judgmentStyle;
   const MoonchulDialog(
       {super.key,
       this.targetContact,
       required this.openRouterService,
       this.isSystemOverlay = false,
-      this.isPage = false});
+      this.isPage = false,
+      this.judgmentStyle = JudgmentStyle.balanced});
   @override
   State<MoonchulDialog> createState() => _MoonchulDialogState();
 }
@@ -25,10 +29,11 @@ class MoonchulDialog extends StatefulWidget {
 class _MoonchulDialogState extends State<MoonchulDialog> {
   final _contextNote = TextEditingController();
   List<String> _images = [];
-  String _mySide = '오른쪽 말풍선';
+  String _mySide = 'Right-side bubbles';
   bool _loading = false;
   String? _error;
   MoonchulResult? _result;
+  int? _copiedReplyIndex;
   AnonymousMoonchulResult? _anonymousResult;
 
   @override
@@ -43,12 +48,15 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
       _error = null;
     });
     try {
-      if (widget.isSystemOverlay)
+      if (widget.isSystemOverlay) {
+        FocusManager.instance.primaryFocus?.unfocus();
+        await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
         await FlutterOverlayWindow.resizeOverlay(1, 1, false);
+      }
       final images = await ScreenCaptureService.pickImagesAsBase64();
       if (!mounted) return;
       if (images != null && images.isNotEmpty) {
-        if (images.length > 5) throw StateError('사진은 최대 5장까지 선택해주세요.');
+        if (images.length > 5) throw StateError('Choose up to 5 images.');
         // 미리보기 불가능한 입력은 분석 전에 알립니다.
         for (final image in images) {
           base64Decode(image);
@@ -60,19 +68,23 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
         });
       }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = error is PlatformException
-            ? (error.message ?? '사진을 읽지 못했습니다.')
+            ? (error.message ?? 'Could not read the image.')
             : error is StateError
-                ? '${error.message}'
-                : '사진을 읽지 못했습니다. 다운로드한 이미지 파일을 선택해주세요.');
+                ? error.message
+                : 'Could not read the image. Choose an image saved on this device.');
+      }
     } finally {
       try {
-        if (widget.isSystemOverlay)
+        if (widget.isSystemOverlay && mounted) {
           await FlutterOverlayWindow.resizeOverlay(340, 620, false);
+          await FlutterOverlayWindow.updateFlag(OverlayFlag.focusPointer);
+        }
       } catch (_) {
-        if (mounted)
-          setState(() => _error = '오버레이 크기를 복원하지 못했습니다. 창을 다시 열어주세요.');
+        if (mounted) {
+          setState(() => _error = 'Could not restore the floating window. Please reopen it.');
+        }
       }
       if (mounted) setState(() => _loading = false);
     }
@@ -82,11 +94,15 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
     setState(() {
       _loading = true;
       _error = null;
+      _copiedReplyIndex = null;
     });
     try {
-      if (_mySide == '구분하기 어려움') {
+      if (_mySide == 'I cannot tell') {
         final result = await widget.openRouterService.analyzeAnonymousConversation(
-          base64Images: _images, contextNote: _contextNote.text.trim());
+          base64Images: _images,
+          contextNote: _contextNote.text.trim(),
+          judgmentStyle: widget.judgmentStyle,
+        );
         if (mounted) setState(() => _anonymousResult = result);
         return;
       }
@@ -94,12 +110,15 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
           base64Images: _images,
           targetContact: widget.targetContact,
           mySide: _mySide,
-          contextNote: _contextNote.text.trim());
+          contextNote: _contextNote.text.trim(),
+          judgmentStyle: widget.judgmentStyle,
+        );
       if (mounted) setState(() => _result = result);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error =
-            e is StateError ? '${e.message}' : '분석하지 못했습니다. 다시 시도해주세요.');
+            e is StateError ? e.message : 'Analysis failed. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -125,9 +144,9 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
           child: Row(children: [
             const Icon(Icons.balance, color: Colors.deepOrange),
             const SizedBox(width: 8),
-            const Expanded(child: Text('문철 · 대화 분쟁 분석',
+            const Expanded(child: Text('Moonchul: Conflict Analysis',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-            IconButton(tooltip: '닫기', onPressed: () => Navigator.pop(context),
+            IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close)),
           ]),
         ),
@@ -139,15 +158,17 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (result == null && anonymousResult == null) ...[
-                    const Text('누가 어떤 말을 했는지 살펴보고, 갈등의 원인과 다음 답장을 함께 정리해요.'),
+                    const Text('See who said what, what caused the conflict, and how you could respond.'),
                     const SizedBox(height: 12),
-                    const Text('1. 대화 사진 첨부 (최대 5장)',
+                    Text('Analysis style: ${widget.judgmentStyle.label}'),
+                    const SizedBox(height: 12),
+                    const Text('1. Attach conversation images (up to 5)',
                         style: TextStyle(fontWeight: FontWeight.bold)),
-                    const Text('시간순으로 선택하고 아래 미리보기 순서를 확인해주세요.'),
+                    const Text('Select images in chronological order and check the previews.'),
                     OutlinedButton.icon(
                         onPressed: _loading ? null : _pickImages,
                         icon: const Icon(Icons.photo_library_outlined),
-                        label: Text(_images.isEmpty ? '사진 선택' : '사진 다시 선택')),
+                        label: Text(_images.isEmpty ? 'Choose images' : 'Choose different images')),
                     if (_images.isNotEmpty)
                       SizedBox(
                           height: 140,
@@ -159,16 +180,16 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                             itemBuilder: (_, i) => SizedBox(
                                 width: 92,
                                 child: Column(children: [
-                                  Text('${i + 1}번'),
+                                  Text('Image ${i + 1}'),
                                   Expanded(
                                       child: Image.memory(
                                           base64Decode(_images[i]),
                                           fit: BoxFit.contain,
                                           errorBuilder: (_, error, stack) =>
                                               const Center(
-                                                  child: Text('미리보기 불가')))),
+                                                  child: Text('Preview unavailable')))),
                                   IconButton(
-                                      tooltip: '사진 삭제',
+                                      tooltip: 'Remove image',
                                       visualDensity: VisualDensity.compact,
                                       onPressed: _loading
                                           ? null
@@ -180,20 +201,20 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                                 ])),
                           )),
                     const SizedBox(height: 12),
-                    const Text('2. 내 메시지 위치',
+                    const Text('2. Where are your messages?',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     DropdownButton<String>(
                         isExpanded: true,
                         value: _mySide,
-                        items: ['오른쪽 말풍선', '왼쪽 말풍선', '구분하기 어려움']
+                        items: ['Right-side bubbles', 'Left-side bubbles', 'I cannot tell']
                             .map((s) =>
                                 DropdownMenuItem(value: s, child: Text(s)))
                             .toList(),
                         onChanged: _loading
                             ? null
                             : (v) => setState(() => _mySide = v!)),
-                    if (_mySide == '구분하기 어려움')
-                      const Text('인물 A, B 등으로 구분해 분석합니다. 이름이나 역할을 알고 있다면 아래 추가 상황에 적어주세요.',
+                    if (_mySide == 'I cannot tell')
+                      const Text('The analysis uses labels like Person A and Person B. Add names or roles below if you know them.',
                           style: TextStyle(fontSize: 12, color: Colors.black54)),
                     const SizedBox(height: 12),
                     TextField(
@@ -203,58 +224,58 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                         minLines: 2,
                         maxLines: 4,
                         decoration: const InputDecoration(
-                            labelText: '3. 추가 상황 (선택)',
-                            hintText: '다툰 이유, 이전 약속, 원하는 해결 방향을 알려주세요.',
+                            labelText: '3. Additional context (optional)',
+                            hintText: 'Add the reason for the dispute, any previous agreement, or the outcome you want.',
                             border: OutlineInputBorder())),
                     Text(
-                        _mySide == '구분하기 어려움'
-                          ? '분석 시작 시 선택한 사진과 추가 상황을 OpenRouter로 전송합니다. 불필요한 개인정보는 가려주세요.'
-                          : '분석 시작 시 선택한 사진과 추가 상황, 선택된 상대방의 이름·관계를 OpenRouter로 전송합니다. 불필요한 개인정보는 가려주세요.',
-                        style: TextStyle(fontSize: 12, color: Colors.black54)),
+                        _mySide == 'I cannot tell'
+                          ? 'OpenRouter receives the images, context, and analysis style. Cover any private details you do not need to share.'
+                          : 'OpenRouter receives the images, message side, context, analysis style, and selected contact name and relationship. Cover any private details you do not need to share.',
+                        style: const TextStyle(fontSize: 12, color: Colors.black54)),
                     const SizedBox(height: 12),
                     ElevatedButton(
                         onPressed:
                             _loading || _images.isEmpty ? null : _analyze,
                         child:
-                            Text(_loading ? '대화와 근거를 분석하고 있어요…' : '분쟁 분석 시작')),
+                            Text(_loading ? 'Analyzing the conversation…' : 'Analyze conflict')),
                     if (_loading) const LinearProgressIndicator(),
                   ] else if (anonymousResult != null) ...[
-                    _section(anonymousResult.canJudge ? '잠정 판단' : '판단 보류', anonymousResult.summary),
-                    Text('판단 확신도: ${anonymousResult.confidence}',
+                    _section(anonymousResult.canJudge ? 'Preliminary assessment' : 'Assessment deferred', anonymousResult.summary),
+                    Text('Confidence: ${anonymousResult.confidence}',
                         style: const TextStyle(color: Colors.black54)),
                     if (anonymousResult.participants.isEmpty)
-                      _section('대화 인물', '이미지에서 인물을 확실하게 구분하지 못했습니다.'),
+                      _section('Participants', 'The participants could not be confidently identified from the images.'),
                     for (final person in anonymousResult.participants)
                       Card(child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(person.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           const SizedBox(height: 6),
-                          SelectableText('식별 단서: ${person.identification}'),
+                          SelectableText('Identifying clue: ${person.identification}'),
                           const SizedBox(height: 6),
                           SelectableText(person.analysis),
                         ]),
                       )),
                     if (anonymousResult.evidence.isNotEmpty)
-                      _section('대화에서 확인한 근거', anonymousResult.evidence.map((e) => '• $e').join('\n\n')),
+                      _section('Evidence from the conversation', anonymousResult.evidence.map((e) => '• $e').join('\n\n')),
                     if (anonymousResult.missingContext.isNotEmpty)
-                      _section('더 확인할 내용', anonymousResult.missingContext.map((e) => '• $e').join('\n')),
-                    _section('갈등 해결 방향', anonymousResult.reconciliationAdvice),
+                      _section('What to clarify', anonymousResult.missingContext.map((e) => '• $e').join('\n')),
+                    _section('How to resolve the conflict', anonymousResult.reconciliationAdvice),
                     const SizedBox(height: 12),
-                    const Text('식별과 판단은 보이는 대화를 바탕으로 한 AI의 잠정 의견입니다.',
+                    const Text('The AI interpretation is based on the visible conversation.',
                         style: TextStyle(fontSize: 12, color: Colors.black54)),
                     OutlinedButton(onPressed: () => setState(() {
                       _anonymousResult = null;
                       _error = null;
-                    }), child: const Text('사진·상황 수정 후 다시 분석')),
+                    }), child: const Text('Edit inputs and try again')),
                   ] else if (result != null) ...[
                     _section(
-                        result.canJudge ? '잠정 판단' : '판단 보류', result.summary),
-                    Text('판단 확신도: ${result.confidence}',
+                        result.canJudge ? 'Preliminary assessment' : 'Assessment deferred', result.summary),
+                    Text('Confidence: ${result.confidence}',
                         style: const TextStyle(color: Colors.black54)),
                     if (result.canJudge) ...[
-                      _section('소통 책임 추정',
-                          '나 ${result.myRatio}%  :  상대방 ${result.otherRatio}%'),
+                      _section('Estimated responsibility',
+                          'You: ${result.myRatio}% · Other person: ${result.otherRatio}%'),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
                           value: result.myRatio / 100,
@@ -263,18 +284,18 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                           backgroundColor: Colors.deepOrange.shade200),
                     ],
                     _section(
-                        '대화에서 확인한 근거',
+                        'Evidence from the conversation',
                         result.evidence.isEmpty
-                            ? '판단할 수 있는 발언이 부족합니다.'
+                            ? 'There is not enough evidence to assess the conversation.'
                             : result.evidence.map((e) => '• $e').join('\n\n')),
-                    _section('내 행동 분석', result.myFaultAnalysis),
-                    _section('상대방 행동 분석', result.otherFaultAnalysis),
+                    _section('Your actions', result.myFaultAnalysis),
+                    _section('Other person\'s actions', result.otherFaultAnalysis),
                     if (result.missingContext.isNotEmpty)
-                      _section('더 확인할 내용',
+                      _section('What to clarify',
                           result.missingContext.map((e) => '• $e').join('\n')),
-                    _section('갈등 해결 순서', result.reconciliationAdvice),
+                    _section('Steps to resolve the conflict', result.reconciliationAdvice),
                     const SizedBox(height: 16),
-                    const Text('바로 보낼 수 있는 답장',
+                    const Text('Suggested replies',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 15)),
                     for (var i = 0; i < result.recommendedReplies.length; i++)
@@ -285,7 +306,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    Text(['차분한 설명', '경계 설정', '합의 제안'][i],
+                                    Text(['Explain calmly', 'Set a boundary', 'Propose an agreement'][i],
                                         style: const TextStyle(
                                             fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 6),
@@ -293,28 +314,30 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                                         result.recommendedReplies[i]),
                                     TextButton.icon(
                                         onPressed: () async {
-                                          await Clipboard.setData(ClipboardData(
-                                              text: result
-                                                  .recommendedReplies[i]));
-                                          if (context.mounted)
-                                            ScaffoldMessenger.maybeOf(context)
-                                                ?.showSnackBar(const SnackBar(
-                                                    content:
-                                                        Text('답장을 복사했습니다.')));
+                                          await copyReply(
+                                            result.recommendedReplies[i],
+                                            isSystemOverlay: widget.isSystemOverlay,
+                                          );
+                                          if (mounted) {
+                                            setState(() => _copiedReplyIndex = i);
+                                          }
                                         },
-                                        icon: const Icon(Icons.copy, size: 16),
-                                        label: const Text('답장 복사')),
+                                        icon: Icon(
+                                          _copiedReplyIndex == i ? Icons.check : Icons.copy,
+                                          size: 16,
+                                        ),
+                                        label: Text(_copiedReplyIndex == i ? 'Reply copied' : 'Copy reply')),
                                   ]))),
                     const SizedBox(height: 12),
                     const Text(
-                        '캡처에 보이는 내용만 바탕으로 한 AI의 잠정 의견이며, 법적 과실이나 사실 확정이 아닙니다.',
+                        'The AI assessment is limited to the visible conversation and has no legal standing.',
                         style: TextStyle(fontSize: 12, color: Colors.black54)),
                     OutlinedButton(
                         onPressed: () => setState(() {
                               _result = null;
                               _error = null;
                             }),
-                        child: const Text('사진·상황 수정 후 다시 분석')),
+                        child: const Text('Edit inputs and try again')),
                   ],
                   if (_error != null)
                     Padding(

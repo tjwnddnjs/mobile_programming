@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import '../providers/auth_provider.dart';
+import '../models/user_model.dart';
 
 /// [역할 설명]: 사용자 계정 관리(My Info) 화면입니다.
 /// 1) 현재 가입된 사용자 정보(이름, 이메일, 전화번호) 열람
@@ -16,65 +17,158 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // 정보 수정 다이얼로그
   void _showEditProfileDialog() {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser;
     if (user == null) return;
 
-    final nameCtrl = TextEditingController(text: user.name);
-    final phoneCtrl = TextEditingController(text: user.phone);
-    final ageCtrl = TextEditingController(text: user.age);
-    final genderCtrl = TextEditingController(text: user.gender);
-    final occupationCtrl = TextEditingController(text: user.occupation);
-    final bioCtrl = TextEditingController(text: user.bio);
+    var name = user.name;
+    var phone = user.phone;
+    var age = user.age;
+    var gender = user.gender;
+    var occupation = user.occupation;
+    var bio = user.bio;
+    var replyTone = user.replyTone;
+    var useEmojis = user.useEmojis;
+    var judgmentStyle = user.judgmentStyle;
+    var saving = false;
+    String? error;
 
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('내 정보 수정'),
-        content: SingleChildScrollView(
-          child: Column(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          scrollable: true,
+          title: const Text('Edit profile'),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '이름')),
-              TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: '전화번호')),
-              TextField(controller: ageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '나이 (선택)')),
-              TextField(controller: genderCtrl, decoration: const InputDecoration(labelText: '성별 (선택)')),
-              TextField(controller: occupationCtrl, decoration: const InputDecoration(labelText: '직업 (선택)')),
-              TextField(controller: bioCtrl, maxLines: 3, decoration: const InputDecoration(labelText: '소개 및 대화 선호 (선택)')),
+              TextFormField(
+                initialValue: name,
+                enabled: !saving,
+                decoration: const InputDecoration(labelText: 'Name'),
+                onChanged: (value) => name = value,
+              ),
+              TextFormField(
+                initialValue: phone,
+                enabled: !saving,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Phone number'),
+                onChanged: (value) => phone = value,
+              ),
+              TextFormField(
+                initialValue: age,
+                enabled: !saving,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Age (optional)'),
+                onChanged: (value) => age = value,
+              ),
+              TextFormField(
+                initialValue: gender,
+                enabled: !saving,
+                decoration: const InputDecoration(labelText: 'Gender (optional)'),
+                onChanged: (value) => gender = value,
+              ),
+              TextFormField(
+                initialValue: occupation,
+                enabled: !saving,
+                decoration: const InputDecoration(labelText: 'Occupation (optional)'),
+                onChanged: (value) => occupation = value,
+              ),
+              TextFormField(
+                initialValue: bio,
+                enabled: !saving,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'About me (optional)'),
+                onChanged: (value) => bio = value,
+              ),
+              const SizedBox(height: 20),
+              Text('AI preferences', style: Theme.of(ctx).textTheme.titleMedium),
+              TextFormField(
+                initialValue: replyTone,
+                enabled: !saving,
+                maxLength: 200,
+                decoration: const InputDecoration(
+                  labelText: 'Default reply tone (optional)',
+                  hintText: 'e.g., Friendly and concise',
+                ),
+                onChanged: (value) => replyTone = value,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Use emojis in suggested replies'),
+                value: useEmojis,
+                onChanged: saving ? null : (value) => setDialogState(() => useEmojis = value),
+              ),
+              DropdownButtonFormField<JudgmentStyle>(
+                initialValue: judgmentStyle,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Moonchul analysis style'),
+                items: [
+                  for (final style in JudgmentStyle.values)
+                    DropdownMenuItem(value: style, child: Text(style.label)),
+                ],
+                onChanged: saving ? null : (value) {
+                  if (value != null) setDialogState(() => judgmentStyle = value);
+                },
+              ),
+              const SizedBox(height: 8),
+              Align(alignment: Alignment.centerLeft, child: Text(judgmentStyle.description)),
             ],
           ),
+          actions: [
+            if (error != null)
+              Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: saving ? null : () async {
+                final ageNumber = int.tryParse(age.trim());
+                if (name.trim().isEmpty) {
+                  setDialogState(() => error = 'Enter your name.');
+                  return;
+                }
+                if (age.trim().isNotEmpty && (ageNumber == null || ageNumber < 1 || ageNumber > 120)) {
+                  setDialogState(() => error = 'Enter an age between 1 and 120.');
+                  return;
+                }
+                setDialogState(() {
+                  saving = true;
+                  error = null;
+                });
+                try {
+                  await auth.updateProfile(
+                    name: name.trim(),
+                    phone: phone.trim(),
+                    age: age.trim(),
+                    gender: gender.trim(),
+                    occupation: occupation.trim(),
+                    bio: bio.trim(),
+                    replyTone: replyTone.trim(),
+                    useEmojis: useEmojis,
+                    judgmentStyle: judgmentStyle,
+                  );
+                } catch (_) {
+                  if (ctx.mounted) {
+                    setDialogState(() {
+                      saving = false;
+                      error = 'Could not save your profile. Please try again.';
+                    });
+                  }
+                  return;
+                }
+                if (!mounted || !ctx.mounted || ModalRoute.of(ctx)?.isCurrent != true) return;
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile saved.')),
+                );
+              },
+              child: Text(saving ? 'Saving…' : 'Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5C6BC0), foregroundColor: Colors.white),
-            onPressed: () async {
-              final age = ageCtrl.text.trim();
-              if (age.isNotEmpty && (int.tryParse(age) == null || int.parse(age) < 1 || int.parse(age) > 120)) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('나이는 1~120 사이의 숫자로 입력해주세요.')));
-                return;
-              }
-              if (nameCtrl.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이름을 입력해주세요.')));
-                return;
-              }
-              await auth.updateProfile(
-                name: nameCtrl.text.trim(),
-                phone: phoneCtrl.text.trim(),
-                age: age, gender: genderCtrl.text.trim(),
-                occupation: occupationCtrl.text.trim(), bio: bioCtrl.text.trim(),
-              );
-              if (!mounted || !ctx.mounted) return;
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('회원 정보가 성공적으로 변경되었습니다.')),
-              );
-            },
-            child: const Text('저장'),
-          ),
-        ],
       ),
     );
   }
@@ -88,15 +182,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
             SizedBox(width: 8),
-            Text('계정 탈퇴'),
+            Text('Delete account'),
           ],
         ),
         content: const Text(
-          '정말 탈퇴하시겠습니까?\n탈퇴 시 등록된 상대방 목록과 저장된 모든 데이터가 영구히 삭제되며 복구할 수 없습니다.',
+          'Delete your account and the profile, preferences, and contacts stored on this device? This cannot be undone.',
           style: TextStyle(height: 1.4),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
             onPressed: () async {
@@ -107,15 +201,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(error.code == 'requires-recent-login'
-                      ? '보안을 위해 로그아웃 후 다시 로그인하고 탈퇴해주세요.'
-                      : '계정을 삭제하지 못했습니다. 다시 시도해주세요.'),
+                      ? 'For security, sign out and sign in again before deleting your account.'
+                      : 'Could not delete your account. Please try again.'),
                 ));
                 return;
               }
               if (!mounted) return;
               Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
             },
-            child: const Text('탈퇴 확인'),
+            child: const Text('Confirm deletion'),
           ),
         ],
       ),
@@ -127,9 +221,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.watch<AuthProvider>().currentUser;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('내 정보 (Profile)')),
+      appBar: AppBar(title: const Text('My Profile')),
       body: user == null
-          ? const Center(child: Text('로그인 정보가 없습니다.'))
+          ? const Center(child: Text('You are signed out.'))
           : ListView(
               padding: const EdgeInsets.all(20.0),
               children: [
@@ -140,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 46,
                         backgroundColor: const Color(0xFF5C6BC0),
                         child: Text(
-                          user.name.isNotEmpty ? user.name[0] : '김',
+                          user.name.isNotEmpty ? user.name[0] : 'U',
                           style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -172,34 +266,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         ListTile(
                           leading: const Icon(Icons.person, color: Color(0xFF5C6BC0)),
-                          title: const Text('이름', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          title: const Text('Name', style: TextStyle(fontSize: 12, color: Colors.grey)),
                           subtitle: Text(user.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
                         const Divider(height: 1),
                         ListTile(
                           leading: const Icon(Icons.email, color: Color(0xFF5C6BC0)),
-                          title: const Text('아이디 / 이메일', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          title: const Text('Email', style: TextStyle(fontSize: 12, color: Colors.grey)),
                           subtitle: Text(user.email, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
                         const Divider(height: 1),
                         ListTile(
                           leading: const Icon(Icons.phone, color: Color(0xFF5C6BC0)),
-                          title: const Text('전화번호', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          title: const Text('Phone number', style: TextStyle(fontSize: 12, color: Colors.grey)),
                           subtitle: Text(user.phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                         ),
                         for (final field in <(String, String)>[
-                          ('나이', user.age), ('성별', user.gender),
-                          ('직업', user.occupation), ('소개 및 대화 선호', user.bio),
+                          ('Age', user.age), ('Gender', user.gender),
+                          ('Occupation', user.occupation), ('About me', user.bio),
                         ])
-                          ListTile(title: Text(field.$1), subtitle: Text(field.$2.isEmpty ? '미설정' : field.$2)),
-                        const ListTile(subtitle: Text('이름, 나이, 성별, 직업과 소개는 답장 추천 시 AI에 전달됩니다.')),
+                          ListTile(title: Text(field.$1), subtitle: Text(field.$2.isEmpty ? 'Not set' : field.$2)),
+                        const ListTile(subtitle: Text('Reply suggestions use your name, age, gender, occupation, and bio.')),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // 수정 버튼
+                Card(
+                  child: Column(
+                    children: [
+                      const ListTile(title: Text('AI preferences')),
+                      ListTile(
+                        title: const Text('Default reply tone'),
+                        subtitle: Text(user.replyTone.isEmpty ? 'Not set' : user.replyTone),
+                      ),
+                      ListTile(
+                        title: const Text('Use emojis in suggested replies'),
+                        subtitle: Text(user.useEmojis ? 'On' : 'Off'),
+                      ),
+                      ListTile(
+                        title: const Text('Moonchul analysis style'),
+                        subtitle: Text(user.judgmentStyle.label),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Edit profile
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -209,7 +324,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   onPressed: _showEditProfileDialog,
                   icon: const Icon(Icons.edit_note),
-                  label: const Text('회원 정보 수정하기'),
+                  label: const Text('Edit profile'),
                 ),
                 const SizedBox(height: 12),
 
@@ -221,11 +336,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   onPressed: () async {
                     await context.read<AuthProvider>().logout();
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                   },
                   icon: const Icon(Icons.logout),
-                  label: const Text('로그아웃'),
+                  label: const Text('Sign out'),
                 ),
                 const SizedBox(height: 24),
 
@@ -235,7 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
                     onPressed: _showDeleteAccountDialog,
                     icon: const Icon(Icons.delete_forever, size: 18),
-                    label: const Text('계정 탈퇴하기', style: TextStyle(fontSize: 13, decoration: TextDecoration.underline)),
+                    label: const Text('Delete my account', style: TextStyle(fontSize: 13, decoration: TextDecoration.underline)),
                   ),
                 ),
               ],
