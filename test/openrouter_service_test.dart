@@ -9,6 +9,39 @@ import 'package:smart_chat_ai/services/openrouter_service.dart';
 
 void main() {
   const jpeg = '/9j/AA==';
+  test('accepts a JSON response wrapped in a markdown code fence', () async {
+    final service = OpenRouterService(
+      apiKey: 'test-key',
+      client: MockClient((_) async => http.Response(jsonEncode({
+        'choices': [
+          {'message': {'content': '```json\n{"recommendations":["a","b","c"]}\n```'}}
+        ]
+      }), 200)),
+    );
+    final result = await service.getChatRecommendations(
+      base64Screenshot: jpeg,
+      targetContact: ContactModel(id: '1', name: 'A', relationship: 'B'),
+    );
+    expect(result, ['a', 'b', 'c']);
+  });
+
+  test('reports a truncated response without exposing its contents', () async {
+    final service = OpenRouterService(
+      apiKey: 'test-key',
+      client: MockClient((_) async => http.Response(jsonEncode({
+        'choices': [
+          {'finish_reason': 'length', 'message': {'content': '{"recommendations":['}}
+        ]
+      }), 200)),
+    );
+    expect(
+      () => service.getChatRecommendations(
+        base64Screenshot: jpeg,
+        targetContact: ContactModel(id: '1', name: 'A', relationship: 'B'),
+      ),
+      throwsA(isA<StateError>().having((e) => e.message, 'message', contains('cut off'))),
+    );
+  });
   test('uses the free vision router and the image media type', () async {
     final service = OpenRouterService(
         apiKey: 'test-key',

@@ -6,7 +6,6 @@ import '../models/contact_model.dart';
 import '../models/moonchul_model.dart';
 import '../models/user_model.dart';
 
-/// [역할 설명]: OpenRouter API 엔드포인트와 통신하여
 /// 1) 실시간 화면 캡처 기반의 3개 맞춤 답장 추천,
 /// 2) 갤러리 이미지 기반의 '문철' 과실 비율 및 대화 진단 결과를 수신하는 핵심 AI 서비스입니다.
 class OpenRouterService {
@@ -21,7 +20,7 @@ class OpenRouterService {
     'OPENROUTER_MODEL', defaultValue: 'openrouter/free');
 
   OpenRouterService(
-      {this.apiKey = const String.fromEnvironment('OPENROUTER_API_KEY'),
+      {this.apiKey ='API키 여기에 입력해라잉',
         http.Client? client})
       : _client = client ?? http.Client();
 
@@ -102,8 +101,20 @@ class OpenRouterService {
           .timeout(const Duration(seconds: 90));
     } on TimeoutException {
       throw StateError('The AI request timed out after 90 seconds. Try one image or try again later.');
-    } catch (_) {
-      throw StateError('Could not connect to OpenRouter. Check your connection.');
+    } catch (error) {
+      // Do not display the exception text: it can contain request details.
+      final details = error.toString().toLowerCase();
+      final category = details.contains('failed host lookup') || details.contains('name resolution')
+          ? 'DNS'
+          : details.contains('handshake') || details.contains('certificate')
+              ? 'TLS'
+              : details.contains('connection refused')
+                  ? 'connection refused'
+                  : details.contains('network is unreachable')
+                      ? 'network unreachable'
+                      : 'other connection error';
+      final code = RegExp(r'os error: [^,]*, errno = (\d+)').firstMatch(details)?.group(1);
+      throw StateError('Could not connect to OpenRouter ($category${code == null ? '' : ', code $code'}).');
     }
     if (response.statusCode != 200) {
       if (response.statusCode == 402) {
@@ -132,14 +143,35 @@ class OpenRouterService {
       }
       throw StateError('OpenRouter request failed (HTTP ${response.statusCode}).');
     }
+    dynamic data;
     try {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      final content = data['choices'][0]['message']['content'] as String;
-      final parsed = jsonDecode(content);
+      data = jsonDecode(utf8.decode(response.bodyBytes));
+    } on FormatException {
+      throw StateError('OpenRouter returned a malformed response. Please try again.');
+    }
+    final choices = data is Map ? data['choices'] : null;
+    if (choices is! List || choices.isEmpty || choices.first is! Map) {
+      throw StateError('OpenRouter returned no AI response. Please try again.');
+    }
+    final choice = choices.first as Map;
+    final message = choice['message'];
+    final content = message is Map ? message['content'] : null;
+    if (content is! String || content.trim().isEmpty) {
+      throw StateError('The AI returned an empty response. Please try again.');
+    }
+    var jsonText = content.trim();
+    final fenced = RegExp(r'^```(?:json)?\s*([\s\S]*?)\s*```$', caseSensitive: false)
+        .firstMatch(jsonText);
+    if (fenced != null) jsonText = fenced.group(1)!.trim();
+    try {
+      final parsed = jsonDecode(jsonText);
       if (parsed is! Map<String, dynamic>) throw const FormatException();
       return parsed;
-    } catch (_) {
-      throw StateError('The AI returned an invalid response. Please try again.');
+    } on FormatException {
+      if (choice['finish_reason'] == 'length') {
+        throw StateError('The AI response was cut off. Try fewer or smaller images.');
+      }
+      throw StateError('The AI response was not valid JSON. Please try again.');
     }
   }
 
