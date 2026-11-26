@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
+
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -75,48 +78,116 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Widget build(BuildContext context) {
     final target = context.watch<ContactProvider>().activeTarget;
     return Scaffold(
-      appBar: AppBar(title: const Text('Reply Suggestions')),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
-        Text(target == null ? 'No contact selected.' : 'Contact: ${target.name} (${target.relationship})',
-            style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        const Text('Select a conversation image to get three suggested replies.'),
-        const SizedBox(height: 16),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          OutlinedButton.icon(onPressed: _busy ? null : _selectImage,
-              icon: const Icon(Icons.photo_library_outlined), label: const Text('Attach image')),
-        ]),
-        const SizedBox(height: 8),
-        const Text('Use the floating assistant to capture the screen of another app.', style: TextStyle(fontSize: 12)),
-        if (_image != null) ...[
+      appBar: const TikiAppBar(title: 'Reply Suggestions'),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          TikiPanel(
+            child: ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(
+                target == null
+                    ? 'No contact selected.'
+                    : 'Contact: ${target.name}',
+                style: Tiki.label,
+              ),
+              subtitle: target == null ? null : Text(target.relationship),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Select a conversation image to get three suggested replies.',
+          ),
           const SizedBox(height: 16),
-          ConstrainedBox(constraints: const BoxConstraints(maxHeight: 300),
-              child: Image.memory(base64Decode(_image!), fit: BoxFit.contain)),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _selectImage,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Attach image'),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
-          const Text('OpenRouter receives the image, selected contact details, relevant profile details and preferences, and any additional instructions.', style: TextStyle(fontSize: 12)),
+          const Text(
+            'Use the floating assistant to capture the screen of another app.',
+            style: TextStyle(fontSize: 12),
+          ),
+          if (_image != null) ...[
+            const SizedBox(height: 16),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: Image.memory(base64Decode(_image!), fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'OpenRouter receives the image, selected contact details, relevant profile details and preferences, and any additional instructions.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+          const SizedBox(height: 16),
+          ReplyInstructionsField(controller: _instructions, enabled: !_busy),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: _busy || _image == null ? null : _analyze,
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Get suggested replies'),
+          ),
+          if (_busy) const LinearProgressIndicator(),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+            ),
+          if (_replies != null) ...[
+            const SizedBox(height: 20),
+            Text(
+              'Suggested replies',
+              style: Tiki.display.copyWith(fontSize: 27),
+            ),
+            const SizedBox(height: 10),
+            for (final reply in _replies!)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: TikiPanel(
+                  child: ListTile(
+                    title: Text(reply),
+                    trailing: const _CopyBadge(),
+                    onTap: () async {
+                      await Clipboard.setData(ClipboardData(text: reply));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Reply copied.')),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+          ],
         ],
-        const SizedBox(height: 16),
-        ReplyInstructionsField(controller: _instructions, enabled: !_busy),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(onPressed: _busy || _image == null ? null : _analyze,
-            icon: const Icon(Icons.auto_awesome), label: const Text('Get suggested replies')),
-        if (_busy) const LinearProgressIndicator(),
-        if (_error != null) Padding(padding: const EdgeInsets.only(top: 12),
-            child: Text(_error!, style: const TextStyle(color: Colors.red))),
-        if (_replies != null) ...[
-          const SizedBox(height: 20),
-          Text('Suggested replies', style: Theme.of(context).textTheme.titleLarge),
-          for (final reply in _replies!)
-            Card(child: ListTile(title: Text(reply), trailing: const Icon(Icons.copy),
-              onTap: () async {
-                await Clipboard.setData(ClipboardData(text: reply));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Reply copied.')));
-                }
-              })),
-        ],
-      ]),
+      ),
     );
   }
+}
+
+class _CopyBadge extends StatelessWidget {
+  const _CopyBadge();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      DecoratedBox(
+        decoration: BoxDecoration(color: Tiki.lilac, borderRadius: Tiki.radius),
+        child: Padding(
+          padding: EdgeInsets.all(5),
+          child: Icon(Icons.copy_outlined, size: 18),
+        ),
+      ),
+      Text('Copy', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+    ],
+  );
 }

@@ -1,5 +1,7 @@
 // lib/widgets/recommendation_dialog.dart
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
 import '../services/reply_clipboard.dart';
 
 /// [역할 설명]: '분석/추천' 결과로 수신한 3개의 추천 대화를 렌더링하는 다이얼로그입니다.
@@ -37,12 +39,17 @@ class RecommendationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: Tiki.shape,
       title: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: Color(0xFF5C6BC0)),
+          const Icon(Icons.auto_awesome, color: Tiki.ink),
           const SizedBox(width: 8),
-          Expanded(child: Text('Suggested replies for $targetName', style: const TextStyle(fontSize: 17))),
+          Expanded(
+            child: Text(
+              'Suggested replies for $targetName',
+              style: const TextStyle(fontSize: 17),
+            ),
+          ),
         ],
       ),
       content: SingleChildScrollView(
@@ -59,19 +66,32 @@ class RecommendationDialog extends StatelessWidget {
               final idx = entry.key + 1;
               final reply = entry.value;
 
-              return Card(
-                elevation: 1,
-                margin: const EdgeInsets.only(bottom: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    radius: 14,
-                    backgroundColor: const Color(0xFF5C6BC0).withValues(alpha: 0.15),
-                    child: Text('$idx', style: const TextStyle(color: Color(0xFF5C6BC0), fontWeight: FontWeight.bold, fontSize: 12)),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10, right: 3),
+                child: TikiPanel(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Tiki.lilac,
+                      child: Text(
+                        '$idx',
+                        style: const TextStyle(
+                          color: Tiki.ink,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      reply,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.copy, size: 18, color: Tiki.ink),
+                    onTap: () => _handleApplyReply(context, reply),
                   ),
-                  title: Text(reply, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.copy, size: 18, color: Color(0xFF5C6BC0)),
-                  onTap: () => _handleApplyReply(context, reply),
                 ),
               );
             }),
@@ -79,7 +99,10 @@ class RecommendationDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
       ],
     );
   }

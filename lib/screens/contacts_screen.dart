@@ -1,6 +1,10 @@
 // lib/screens/contacts_screen.dart
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
+
 import 'package:provider/provider.dart';
+
 import '../providers/contact_provider.dart';
 import '../models/contact_model.dart';
 
@@ -27,9 +31,26 @@ class ContactsScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name (e.g., Manager)')),
-              TextField(controller: relCtrl, decoration: const InputDecoration(labelText: 'Relationship (e.g., manager)')),
-              TextField(controller: memoCtrl, decoration: const InputDecoration(labelText: 'Notes (e.g., prefers short updates)')),
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Name (e.g., Manager)',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: relCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Relationship (e.g., manager)',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: memoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (e.g., prefers short updates)',
+                ),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: personalityCtrl,
@@ -43,9 +64,12 @@ class ContactsScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5C6BC0), foregroundColor: Colors.white),
+            style: Tiki.filled(),
             onPressed: () {
               final prov = context.read<ContactProvider>();
               if (contact == null) {
@@ -56,12 +80,14 @@ class ContactsScreen extends StatelessWidget {
                   personality: personalityCtrl.text.trim(),
                 );
               } else {
-                prov.updateContact(contact.copyWith(
-                  name: nameCtrl.text.trim(),
-                  relationship: relCtrl.text.trim(),
-                  memo: memoCtrl.text.trim(),
-                  personality: personalityCtrl.text.trim(),
-                ));
+                prov.updateContact(
+                  contact.copyWith(
+                    name: nameCtrl.text.trim(),
+                    relationship: relCtrl.text.trim(),
+                    memo: memoCtrl.text.trim(),
+                    personality: personalityCtrl.text.trim(),
+                  ),
+                );
               }
               Navigator.pop(ctx);
             },
@@ -78,135 +104,219 @@ class ContactsScreen extends StatelessWidget {
     final contacts = contactProv.contacts;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Contacts')),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF5C6BC0),
-        onPressed: () => _showAddOrEditDialog(context),
-        child: const Icon(Icons.person_add, color: Colors.white),
-      ),
-      body: contacts.isEmpty
-          ? const Center(child: Text('No contacts yet. Tap + to add one.'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: contacts.length,
-              itemBuilder: (context, idx) {
-                final c = contacts[idx];
-                final isTarget = c.isAnalysisTarget;
+      appBar: const TikiAppBar(title: 'Contacts'),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: TikiPanel(
+              color: Tiki.lilac,
+              onTap: () => _showAddOrEditDialog(context),
+              child: const ListTile(
+                leading: Icon(Icons.person_add_outlined),
+                title: Text('Add contact', style: Tiki.label),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
+          ),
+          Expanded(
+            child: contacts.isEmpty
+                ? const Center(
+                    child: Text('No contacts yet. Tap + to add one.'))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: contacts.length,
+                    itemBuilder: (context, idx) {
+                      final c = contacts[idx];
+                      final isTarget = c.isAnalysisTarget;
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: isTarget ? const Color(0xFF5C6BC0) : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: TikiPanel(
+                          color:
+                              isTarget ? const Color(0xFFE4EEFC) : Tiki.white,
+                          child: Padding(
+                            padding: const EdgeInsets.all(14.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  backgroundColor: isTarget ? const Color(0xFF5C6BC0) : Colors.grey.shade300,
-                                  child: Text(
-                                    c.name.isNotEmpty ? c.name[0] : '?',
-                                    style: TextStyle(color: isTarget ? Colors.white : Colors.black87),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor: isTarget
+                                                ? Tiki.blue
+                                                : Tiki.lilac,
+                                            child: Text(
+                                              c.name.isNotEmpty
+                                                  ? c.name[0]
+                                                  : '?',
+                                              style: Tiki.label,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  c.name,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  c.relationship,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isTarget)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Tiki.lilac,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.check_circle,
+                                              size: 14,
+                                              color: Tiki.ink,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Selected contact',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Tiki.ink,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Tiki.paper,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Style: ${c.personality}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      if (c.memo.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Notes: ${c.memo}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(width: 10),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 6,
                                   children: [
-                                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                    Text(c.relationship, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                    // [핵심 요구사항 B-2]: 대화 분석 대상(Target)으로 지정하기 버튼
+                                    ElevatedButton.icon(
+                                      style: Tiki.filled(
+                                        isTarget ? Tiki.lilac : Tiki.blue,
+                                      ),
+                                      onPressed: () {
+                                        context
+                                            .read<ContactProvider>()
+                                            .setActiveTarget(c.id);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              "${c.name} is now the selected contact.",
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      icon:
+                                          const Icon(Icons.gps_fixed, size: 16),
+                                      label: Text(
+                                        isTarget
+                                            ? 'Selected contact'
+                                            : 'Set as analysis contact',
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon:
+                                              const Icon(Icons.edit, size: 20),
+                                          onPressed: () =>
+                                              _showAddOrEditDialog(context, c),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            size: 20,
+                                            color: Colors.redAccent,
+                                          ),
+                                          onPressed: () {
+                                            context
+                                                .read<ContactProvider>()
+                                                .deleteContact(c.id);
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ],
                             ),
-                            if (isTarget)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.indigo.shade50,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.check_circle, size: 14, color: Color(0xFF5C6BC0)),
-                                    SizedBox(width: 4),
-                                    Text('Selected contact', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0))),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.blueGrey.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Style: ${c.personality}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                              if (c.memo.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text('Notes: ${c.memo}', style: const TextStyle(fontSize: 11, color: Colors.black54)),
-                              ],
-                            ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // [핵심 요구사항 B-2]: 대화 분석 대상(Target)으로 지정하기 버튼
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isTarget ? const Color(0xFF5C6BC0) : Colors.grey.shade200,
-                                foregroundColor: isTarget ? Colors.white : Colors.black87,
-                                elevation: 0,
-                              ),
-                              onPressed: () {
-                                context.read<ContactProvider>().setActiveTarget(c.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("${c.name} is now the selected contact.")),
-                                );
-                              },
-                              icon: const Icon(Icons.gps_fixed, size: 16),
-                              label: Text(isTarget ? 'Selected contact' : 'Set as analysis contact'),
-                            ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit, size: 20),
-                                  onPressed: () => _showAddOrEditDialog(context, c),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
-                                  onPressed: () {
-                                    context.read<ContactProvider>().deleteContact(c.id);
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
     );
   }
 }

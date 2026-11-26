@@ -1,7 +1,11 @@
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
+
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
+
 import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
 
@@ -221,90 +225,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.watch<AuthProvider>().currentUser;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
+      appBar: const TikiAppBar(title: 'My Profile'),
       body: user == null
           ? const Center(child: Text('You are signed out.'))
           : ListView(
               padding: const EdgeInsets.all(20.0),
               children: [
-                Center(
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 46,
-                        backgroundColor: const Color(0xFF5C6BC0),
-                        child: Text(
-                          user.name.isNotEmpty ? user.name[0] : 'U',
-                          style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Colors.white,
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.edit, size: 16, color: Color(0xFF5C6BC0)),
-                            onPressed: _showEditProfileDialog,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // 정보 표시 카드
-                Card(
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                TikiPanel(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Column(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
                       children: [
-                        ListTile(
-                          leading: const Icon(Icons.person, color: Color(0xFF5C6BC0)),
-                          title: const Text('Name', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          subtitle: Text(user.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        const Icon(Icons.person_outline, size: 30),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(user.name,
+                              style: Tiki.label.copyWith(fontSize: 18)),
                         ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.email, color: Color(0xFF5C6BC0)),
-                          title: const Text('Email', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          subtitle: Text(user.email, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          style: Tiki.filled(Tiki.lilac),
+                          onPressed: _showEditProfileDialog,
+                          icon: const Icon(Icons.edit_note, size: 18),
+                          label: const Text('Edit profile'),
                         ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.phone, color: Color(0xFF5C6BC0)),
-                          title: const Text('Phone number', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          subtitle: Text(user.phone, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                        ),
-                        for (final field in <(String, String)>[
-                          ('Age', user.age), ('Gender', user.gender),
-                          ('Occupation', user.occupation), ('About me', user.bio),
-                        ])
-                          ListTile(title: Text(field.$1), subtitle: Text(field.$2.isEmpty ? 'Not set' : field.$2)),
-                        const ListTile(subtitle: Text('Reply suggestions use your name, age, gender, occupation, and bio.')),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-
-                Card(
+                const SizedBox(height: 16),
+                TikiPanel(
                   child: Column(
                     children: [
-                      const ListTile(title: Text('AI preferences')),
+                      ListTile(
+                        title: Text(
+                          'AI preferences',
+                          style: Tiki.display.copyWith(fontSize: 22),
+                        ),
+                      ),
+                      const Divider(height: 1),
                       ListTile(
                         title: const Text('Default reply tone'),
-                        subtitle: Text(user.replyTone.isEmpty ? 'Not set' : user.replyTone),
+                        subtitle: Text(
+                          user.replyTone.isEmpty ? 'Not set' : user.replyTone,
+                        ),
                       ),
+                      const Divider(height: 1),
                       ListTile(
                         title: const Text('Use emojis in suggested replies'),
                         subtitle: Text(user.useEmojis ? 'On' : 'Off'),
                       ),
+                      const Divider(height: 1),
                       ListTile(
                         title: const Text('Moonchul analysis style'),
                         subtitle: Text(user.judgmentStyle.label),
@@ -314,30 +285,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Edit profile
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: const Color(0xFF5C6BC0),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                // 정보 표시 카드
+                TikiPanel(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          title: Text('Account details',
+                              style: Tiki.display.copyWith(fontSize: 20)),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.email, color: Tiki.ink),
+                          title: const Text(
+                            'Email',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          subtitle: Text(
+                            user.email,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.phone, color: Tiki.ink),
+                          title: const Text(
+                            'Phone number',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          subtitle: Text(
+                            user.phone,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        for (final field in <(String, String)>[
+                          ('Age', user.age),
+                          ('Gender', user.gender),
+                          ('Occupation', user.occupation),
+                          ('About me', user.bio),
+                        ])
+                          ListTile(
+                            title: Text(field.$1),
+                            subtitle: Text(
+                              field.$2.isEmpty ? 'Not set' : field.$2,
+                            ),
+                          ),
+                        const ListTile(
+                          subtitle: Text(
+                            'Reply suggestions use your name, age, gender, occupation, and bio.',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  onPressed: _showEditProfileDialog,
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text('Edit profile'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
                 // 로그아웃 버튼
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () async {
                     await context.read<AuthProvider>().logout();
                     if (!context.mounted) return;
-                    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/login',
+                      (route) => false,
+                    );
                   },
                   icon: const Icon(Icons.logout),
                   label: const Text('Sign out'),
@@ -347,10 +376,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // 계정 탈퇴 버튼 (빨간색 텍스트 버튼)
                 Center(
                   child: TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                    ),
                     onPressed: _showDeleteAccountDialog,
                     icon: const Icon(Icons.delete_forever, size: 18),
-                    label: const Text('Delete my account', style: TextStyle(fontSize: 13, decoration: TextDecoration.underline)),
+                    label: const Text(
+                      'Delete my account',
+                      style: TextStyle(
+                        fontSize: 13,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
                   ),
                 ),
               ],
