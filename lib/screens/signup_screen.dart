@@ -1,6 +1,10 @@
 // lib/screens/signup_screen.dart
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
+
 import 'package:provider/provider.dart';
+
 import '../providers/auth_provider.dart';
 
 /// [역할 설명]: 신규 사용자 등록을 담당하는 회원가입 화면입니다.
@@ -59,105 +63,109 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sign up'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      backgroundColor: Colors.white,
+      appBar: const TikiAppBar(title: 'Sign up'),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Create a SmartChat AI account',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                ),
-                const SizedBox(height: 6),
-                const Text('Firebase handles sign-in. Your profile and contacts are saved on this device.',
-                    style: TextStyle(fontSize: 12, color: Colors.black54)),
-                const SizedBox(height: 6),
-                const Text(
-                  'Enter your account details to get started.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-                const SizedBox(height: 28),
-
-                // 1. 이름 입력
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name or nickname',
-                    prefixIcon: Icon(Icons.person_outline),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                  ),
-                  validator: (val) => val == null || val.trim().isEmpty ? 'Enter your name.' : null,
-                ),
-                const SizedBox(height: 14),
-
-                // 2. 이메일/아이디 입력
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) return 'Enter your email.';
-                    if (!val.contains('@')) return 'Enter a valid email address.';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-
-                // 3. 비밀번호 입력
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password (at least 6 characters)',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Firebase handles sign-in. Your profile and contacts are saved on this device.',
+                      style: TextStyle(fontSize: 12, color: Tiki.muted),
                     ),
-                  ),
-                  validator: (val) => val != null && val.length < 6 ? 'Enter at least 6 characters.' : null,
-                ),
-                const SizedBox(height: 14),
+                    const SizedBox(height: 16),
 
-                // 4. 전화번호 입력
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone number',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                  ),
-                  validator: (val) => val == null || val.trim().isEmpty ? 'Enter your phone number.' : null,
-                ),
-                const SizedBox(height: 28),
+                    // 1. 이름 입력
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name or nickname',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Enter your name.'
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
 
-                // 가입하기 버튼
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF5C6BC0),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: _isLoading ? null : _handleSignup,
-                  child: Text(_isLoading ? 'Creating account…' : 'Create account', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    // 2. 이메일/아이디 입력
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Enter your email.';
+                        if (!val.contains('@')) return 'Enter a valid email address.';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 3. 비밀번호 입력
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Password (at least 6 characters)',
+                        prefixIcon: const Icon(Icons.lock_outline),
+
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                        ),
+                      ),
+                      validator: (val) => val != null && val.length < 6
+                          ? 'Enter at least 6 characters.'
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 4. 전화번호 입력
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone number',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Enter your phone number.'
+                          : null,
+                    ),
+                    const SizedBox(height: 28),
+
+                    // 가입하기 버튼
+                    ElevatedButton(
+                      style: Tiki.filled(),
+                      onPressed: _isLoading ? null : _handleSignup,
+                      child: Text(
+                        _isLoading ? 'Creating account…' : 'Create account',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

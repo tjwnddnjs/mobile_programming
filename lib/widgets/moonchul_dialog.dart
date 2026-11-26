@@ -1,7 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+
 import '../services/screen_capture_service.dart';
 import '../services/reply_clipboard.dart';
 import '../models/contact_model.dart';
@@ -124,229 +129,388 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
     }
   }
 
-  Widget _section(String title, String body) => Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-        const SizedBox(height: 6),
-        SelectableText(body),
-      ]));
+  Widget _section(String title, String body, {Color color = Tiki.white}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, right: 2),
+      child: TikiPanel(
+        color: color,
+        child: Padding(
+          padding: const EdgeInsets.all(13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Tiki.display.copyWith(fontSize: 17)),
+              const SizedBox(height: 6),
+              SelectableText(body),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _formBlock(List<Widget> children) => TikiPanel(
+        child: Padding(
+          padding: const EdgeInsets.all(13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     final result = _result;
     final anonymousResult = _anonymousResult;
-    final content = Column(mainAxisSize: MainAxisSize.min, children: [
-      if (!widget.isPage)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
-          child: Row(children: [
-            const Icon(Icons.balance, color: Colors.deepOrange),
-            const SizedBox(width: 8),
-            const Expanded(child: Text('Moonchul: Conflict Analysis',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-            IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close)),
-          ]),
-        ),
-      if (!widget.isPage) const Divider(),
-          Flexible(
-              child: SingleChildScrollView(
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!widget.isPage)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.balance, color: Tiki.ink),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Moonchul: Conflict Analysis',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+        if (!widget.isPage) const Divider(),
+        Flexible(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (result == null && anonymousResult == null) ...[
-                    const Text('See who said what, what caused the conflict, and how you could respond.'),
-                    const SizedBox(height: 12),
-                    Text('Analysis style: ${widget.judgmentStyle.label}'),
-                    const SizedBox(height: 12),
-                    const Text('1. Attach conversation images (up to 5)',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const Text('Select images in chronological order and check the previews.'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (result == null && anonymousResult == null) ...[
+                  const Text(
+                    'See who said what, what caused the conflict, and how you could respond.',
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Analysis style: ${widget.judgmentStyle.label}'),
+                  const SizedBox(height: 12),
+                  _formBlock([
+                    const Text(
+                      'Conversation screenshots (up to 5)',
+                      style: Tiki.label,
+                    ),
+                    const Text(
+                      'Select images in chronological order and check the previews.',
+                    ),
                     OutlinedButton.icon(
-                        onPressed: _loading ? null : _pickImages,
-                        icon: const Icon(Icons.photo_library_outlined),
-                        label: Text(_images.isEmpty ? 'Choose images' : 'Choose different images')),
+                      onPressed: _loading ? null : _pickImages,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: Text(
+                        _images.isEmpty
+                            ? 'Choose images'
+                            : 'Choose different images',
+                      ),
+                    ),
                     if (_images.isNotEmpty)
                       SizedBox(
-                          height: 140,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _images.length,
-                            separatorBuilder: (_, index) =>
-                                const SizedBox(width: 8),
-                            itemBuilder: (_, i) => SizedBox(
-                                width: 92,
-                                child: Column(children: [
-                                  Text('Image ${i + 1}'),
-                                  Expanded(
-                                      child: Image.memory(
-                                          base64Decode(_images[i]),
-                                          fit: BoxFit.contain,
-                                          errorBuilder: (_, error, stack) =>
-                                              const Center(
-                                                  child: Text('Preview unavailable')))),
-                                  IconButton(
-                                      tooltip: 'Remove image',
-                                      visualDensity: VisualDensity.compact,
-                                      onPressed: _loading
-                                          ? null
-                                          : () => setState(
-                                              () => _images.removeAt(i)),
-                                      icon: const Icon(
-                                          Icons.remove_circle_outline,
-                                          size: 18)),
-                                ])),
-                          )),
-                    const SizedBox(height: 12),
-                    const Text('2. Where are your messages?',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                        height: 140,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _images.length,
+                          separatorBuilder: (_, index) =>
+                              const SizedBox(width: 8),
+                          itemBuilder: (_, i) => SizedBox(
+                            width: 92,
+                            child: Column(
+                              children: [
+                                Text('Image ${i + 1}'),
+                                Expanded(
+                                  child: Image.memory(
+                                    base64Decode(_images[i]),
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, error, stack) =>
+                                        const Center(
+                                      child: Text('Preview unavailable'),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Remove image',
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: _loading
+                                      ? null
+                                      : () =>
+                                          setState(() => _images.removeAt(i)),
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ]),
+                  const SizedBox(height: 12),
+                  _formBlock([
+                    const Text(
+                      'Where are your messages?',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     DropdownButton<String>(
-                        isExpanded: true,
-                        value: _mySide,
-                        items: ['Right-side bubbles', 'Left-side bubbles', 'I cannot tell']
-                            .map((s) =>
-                                DropdownMenuItem(value: s, child: Text(s)))
-                            .toList(),
-                        onChanged: _loading
-                            ? null
-                            : (v) => setState(() => _mySide = v!)),
+                      isExpanded: true,
+                      value: _mySide,
+                      items: [
+                        'Right-side bubbles',
+                        'Left-side bubbles',
+                        'I cannot tell',
+                      ]
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                      onChanged:
+                          _loading ? null : (v) => setState(() => _mySide = v!),
+                    ),
                     if (_mySide == 'I cannot tell')
-                      const Text('The analysis uses labels like Person A and Person B. Add names or roles below if you know them.',
-                          style: TextStyle(fontSize: 12, color: Colors.black54)),
-                    const SizedBox(height: 12),
-                    TextField(
-                        controller: _contextNote,
-                        enabled: !_loading,
-                        maxLength: 1500,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                            labelText: '3. Additional context (optional)',
-                            hintText: 'Add the reason for the dispute, any previous agreement, or the outcome you want.',
-                            border: OutlineInputBorder())),
-                    Text(
-                        _mySide == 'I cannot tell'
-                          ? 'OpenRouter receives the images, context, and analysis style. Cover any private details you do not need to share.'
-                          : 'OpenRouter receives the images, message side, context, analysis style, and selected contact name and relationship. Cover any private details you do not need to share.',
-                        style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                        onPressed:
-                            _loading || _images.isEmpty ? null : _analyze,
-                        child:
-                            Text(_loading ? 'Analyzing the conversation…' : 'Analyze conflict')),
-                    if (_loading) const LinearProgressIndicator(),
-                  ] else if (anonymousResult != null) ...[
-                    _section(anonymousResult.canJudge ? 'Preliminary assessment' : 'Assessment deferred', anonymousResult.summary),
-                    Text('Confidence: ${anonymousResult.confidence}',
-                        style: const TextStyle(color: Colors.black54)),
-                    if (anonymousResult.participants.isEmpty)
-                      _section('Participants', 'The participants could not be confidently identified from the images.'),
-                    for (final person in anonymousResult.participants)
-                      Card(child: Padding(
+                      const Text(
+                        'The analysis uses labels like Person A and Person B. Add names or roles below if you know them.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                  ]),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _contextNote,
+                    enabled: !_loading,
+                    maxLength: 1500,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Additional context (optional)',
+                      hintText:
+                          'Add the reason for the dispute, any previous agreement, or the outcome you want.',
+                      border: Tiki.fieldBorder,
+                    ),
+                  ),
+                  Text(
+                    _mySide == 'I cannot tell'
+                        ? 'OpenRouter receives the images, context, and analysis style. Cover any private details you do not need to share.'
+                        : 'OpenRouter receives the images, message side, context, analysis style, and selected contact name and relationship. Cover any private details you do not need to share.',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    style: Tiki.filled(Tiki.coral),
+                    onPressed: _loading || _images.isEmpty ? null : _analyze,
+                    child: Text(
+                      _loading
+                          ? 'Analyzing the conversation…'
+                          : 'Analyze conflict',
+                    ),
+                  ),
+                  if (_loading) const LinearProgressIndicator(),
+                ] else if (anonymousResult != null) ...[
+                  _section(
+                    anonymousResult.canJudge
+                        ? 'Preliminary assessment'
+                        : 'Assessment deferred',
+                    anonymousResult.summary,
+                    color: Tiki.coral,
+                  ),
+                  Text(
+                    'Confidence: ${anonymousResult.confidence}',
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  if (anonymousResult.participants.isEmpty)
+                    _section(
+                      'Participants',
+                      'The participants could not be confidently identified from the images.',
+                    ),
+                  for (final person in anonymousResult.participants)
+                    Card(
+                      child: Padding(
                         padding: const EdgeInsets.all(12),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(person.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 6),
-                          SelectableText('Identifying clue: ${person.identification}'),
-                          const SizedBox(height: 6),
-                          SelectableText(person.analysis),
-                        ]),
-                      )),
-                    if (anonymousResult.evidence.isNotEmpty)
-                      _section('Evidence from the conversation', anonymousResult.evidence.map((e) => '• $e').join('\n\n')),
-                    if (anonymousResult.missingContext.isNotEmpty)
-                      _section('What to clarify', anonymousResult.missingContext.map((e) => '• $e').join('\n')),
-                    _section('How to resolve the conflict', anonymousResult.reconciliationAdvice),
-                    const SizedBox(height: 12),
-                    const Text('The AI interpretation is based on the visible conversation.',
-                        style: TextStyle(fontSize: 12, color: Colors.black54)),
-                    OutlinedButton(onPressed: () => setState(() {
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              person.label,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            SelectableText(
+                              'Identifying clue: ${person.identification}',
+                            ),
+                            const SizedBox(height: 6),
+                            SelectableText(person.analysis),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (anonymousResult.evidence.isNotEmpty)
+                    _section(
+                      'Evidence from the conversation',
+                      anonymousResult.evidence.map((e) => '• $e').join('\n\n'),
+                    ),
+                  if (anonymousResult.missingContext.isNotEmpty)
+                    _section(
+                      'What to clarify',
+                      anonymousResult.missingContext
+                          .map((e) => '• $e')
+                          .join('\n'),
+                    ),
+                  _section(
+                    'How to resolve the conflict',
+                    anonymousResult.reconciliationAdvice,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'The AI interpretation is based on the visible conversation.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => setState(() {
                       _anonymousResult = null;
                       _error = null;
-                    }), child: const Text('Edit inputs and try again')),
-                  ] else if (result != null) ...[
+                    }),
+                    child: const Text('Edit inputs and try again'),
+                  ),
+                ] else if (result != null) ...[
+                  _section(
+                    result.canJudge
+                        ? 'Preliminary assessment'
+                        : 'Assessment deferred',
+                    result.summary,
+                    color: Tiki.coral,
+                  ),
+                  Text(
+                    'Confidence: ${result.confidence}',
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  if (result.canJudge) ...[
                     _section(
-                        result.canJudge ? 'Preliminary assessment' : 'Assessment deferred', result.summary),
-                    Text('Confidence: ${result.confidence}',
-                        style: const TextStyle(color: Colors.black54)),
-                    if (result.canJudge) ...[
-                      _section('Estimated responsibility',
-                          'You: ${result.myRatio}% · Other person: ${result.otherRatio}%'),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                          value: result.myRatio / 100,
-                          minHeight: 12,
-                          color: Colors.blue,
-                          backgroundColor: Colors.deepOrange.shade200),
-                    ],
-                    _section(
-                        'Evidence from the conversation',
-                        result.evidence.isEmpty
-                            ? 'There is not enough evidence to assess the conversation.'
-                            : result.evidence.map((e) => '• $e').join('\n\n')),
-                    _section('Your actions', result.myFaultAnalysis),
-                    _section('Other person\'s actions', result.otherFaultAnalysis),
-                    if (result.missingContext.isNotEmpty)
-                      _section('What to clarify',
-                          result.missingContext.map((e) => '• $e').join('\n')),
-                    _section('Steps to resolve the conflict', result.reconciliationAdvice),
-                    const SizedBox(height: 16),
-                    const Text('Suggested replies',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
-                    for (var i = 0; i < result.recommendedReplies.length; i++)
-                      Card(
-                          child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(['Explain calmly', 'Set a boundary', 'Propose an agreement'][i],
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 6),
-                                    SelectableText(
-                                        result.recommendedReplies[i]),
-                                    TextButton.icon(
-                                        onPressed: () async {
-                                          await copyReply(
-                                            result.recommendedReplies[i],
-                                            isSystemOverlay: widget.isSystemOverlay,
-                                          );
-                                          if (mounted) {
-                                            setState(() => _copiedReplyIndex = i);
-                                          }
-                                        },
-                                        icon: Icon(
-                                          _copiedReplyIndex == i ? Icons.check : Icons.copy,
-                                          size: 16,
-                                        ),
-                                        label: Text(_copiedReplyIndex == i ? 'Reply copied' : 'Copy reply')),
-                                  ]))),
-                    const SizedBox(height: 12),
-                    const Text(
-                        'The AI assessment is limited to the visible conversation and has no legal standing.',
-                        style: TextStyle(fontSize: 12, color: Colors.black54)),
-                    OutlinedButton(
-                        onPressed: () => setState(() {
-                              _result = null;
-                              _error = null;
-                            }),
-                        child: const Text('Edit inputs and try again')),
+                      'Estimated responsibility',
+                      'You: ${result.myRatio}% · Other person: ${result.otherRatio}%',
+                    ),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: result.myRatio / 100,
+                      minHeight: 12,
+                      color: Tiki.coral,
+                      backgroundColor: Tiki.lilac,
+                    ),
                   ],
-                  if (_error != null)
+                  _section(
+                    'Evidence from the conversation',
+                    result.evidence.isEmpty
+                        ? 'There is not enough evidence to assess the conversation.'
+                        : result.evidence.map((e) => '• $e').join('\n\n'),
+                  ),
+                  _section('Your actions', result.myFaultAnalysis),
+                  _section(
+                    'Other person\'s actions',
+                    result.otherFaultAnalysis,
+                  ),
+                  if (result.missingContext.isNotEmpty)
+                    _section(
+                      'What to clarify',
+                      result.missingContext.map((e) => '• $e').join('\n'),
+                    ),
+                  _section(
+                    'Steps to resolve the conflict',
+                    result.reconciliationAdvice,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'What to say next',
+                    style: Tiki.display.copyWith(fontSize: 20),
+                  ),
+                  for (var i = 0; i < result.recommendedReplies.length; i++)
                     Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(_error!,
-                            style: const TextStyle(color: Colors.red))),
-                ]),
-          )),
-    ]);
+                      padding: const EdgeInsets.only(top: 10, right: 2),
+                      child: TikiPanel(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                [
+                                  'Explain calmly',
+                                  'Set a boundary',
+                                  'Propose an agreement',
+                                ][i],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              SelectableText(result.recommendedReplies[i]),
+                              TextButton.icon(
+                                onPressed: () async {
+                                  await copyReply(
+                                    result.recommendedReplies[i],
+                                    isSystemOverlay: widget.isSystemOverlay,
+                                  );
+                                  if (mounted) {
+                                    setState(() => _copiedReplyIndex = i);
+                                  }
+                                },
+                                icon: Icon(
+                                  _copiedReplyIndex == i
+                                      ? Icons.check
+                                      : Icons.copy,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  _copiedReplyIndex == i
+                                      ? 'Reply copied'
+                                      : 'Copy reply',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'The AI assessment is limited to the visible conversation and has no legal standing.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => setState(() {
+                      _result = null;
+                      _error = null;
+                    }),
+                    child: const Text('Edit inputs and try again'),
+                  ),
+                ],
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Tiki.error),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
     if (widget.isPage) return content;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),

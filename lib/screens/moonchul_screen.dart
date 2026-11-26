@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
+
 import 'package:provider/provider.dart';
 
 import '../providers/contact_provider.dart';
@@ -20,14 +23,17 @@ class _MoonchulScreenState extends State<MoonchulScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Moonchul: Conflict Analysis')),
-      body: SafeArea(child: MoonchulDialog(
-        isPage: true,
-        targetContact: context.watch<ContactProvider>().activeTarget,
-        openRouterService: _service,
-        judgmentStyle: context.watch<AuthProvider>().currentUser?.judgmentStyle ??
-            JudgmentStyle.balanced,
-      )),
+      appBar: const TikiAppBar(title: 'Moonchul', accent: Tiki.coral),
+      body: SafeArea(
+        child: MoonchulDialog(
+          isPage: true,
+          targetContact: context.watch<ContactProvider>().activeTarget,
+          openRouterService: _service,
+          judgmentStyle:
+              context.watch<AuthProvider>().currentUser?.judgmentStyle ??
+              JudgmentStyle.balanced,
+        ),
+      ),
     );
   }
 }

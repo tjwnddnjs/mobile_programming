@@ -1,9 +1,14 @@
 // lib/widgets/system_overlay_entrypoint.dart
 import 'package:flutter/material.dart';
+
+import '../ui/tiki_theme.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+
 import 'dart:convert';
 import 'dart:async';
+
 import '../models/contact_model.dart';
 import '../models/user_model.dart';
 import '../services/screen_capture_service.dart';
@@ -19,9 +24,10 @@ import 'moonchul_dialog.dart';
 @pragma('vm:entry-point')
 void overlayMain() {
   runApp(
-    const MaterialApp(
+    MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SystemOverlayFloatingUI(),
+      theme: Tiki.theme,
+      home: const SystemOverlayFloatingUI(),
     ),
   );
 }
@@ -211,37 +217,60 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
     return Material(
       color: Colors.transparent,
       child: Center(
-        child: _busy ? _buildProgress() : _isExpanded ? _buildExpandedMenu() : _buildFloatingIcon(),
+        child: _busy
+            ? _buildProgress()
+            : _isExpanded
+            ? _buildExpandedMenu()
+            : _buildFloatingIcon(),
       ),
     );
   }
 
   /// 서버는 진행률을 제공하지 않으므로 가짜 백분율 대신 단계와 경과 시간을 표시합니다.
   Widget _buildProgress() {
-    return LayoutBuilder(builder: (context, constraints) {
-      if (constraints.maxWidth < 120 || constraints.maxHeight < 100) {
-        return const SizedBox(width: 40, height: 40,
-            child: CircularProgressIndicator());
-      }
-      return Container(
-        width: 280,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white,
-            borderRadius: BorderRadius.circular(8)),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(_stage, style: const TextStyle(fontSize: 16,
-              fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('Elapsed: ${_elapsed}s'),
-          if (_stage == 'Analyzing the conversation' && _elapsed >= 30)
-            const Padding(padding: EdgeInsets.only(top: 8),
-                child: Text('Waiting for the AI response.',
-                    style: TextStyle(color: Colors.black54))),
-        ]),
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 120 || constraints.maxHeight < 100) {
+          return const SizedBox(
+            width: 40,
+            height: 40,
+            child: CircularProgressIndicator(),
+          );
+        }
+        return Container(
+          width: 280,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                _stage,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('Elapsed: ${_elapsed}s'),
+              if (_stage == 'Analyzing the conversation' && _elapsed >= 30)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Waiting for the AI response.',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildFloatingIcon() {
@@ -255,68 +284,88 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: const Color(0xFF3F51B5),
+          color: Tiki.blue,
           shape: BoxShape.circle,
-          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10)],
-          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: const [Tiki.shadow],
+          border: Border.all(color: Tiki.ink, width: 2),
         ),
-        child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 30),
+        child: const Icon(Icons.chat_bubble_outline, color: Tiki.ink, size: 28),
       ),
     );
   }
 
   Widget _buildExpandedMenu() {
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF303F9F),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 14)],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SizedBox(
+      width: 238,
+      child: TikiPanel(
+        color: Tiki.paper,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                _targetContact != null ? 'Target: ${_targetContact!.name}' : 'SmartChat AI',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TikiTalk',
+                          style: Tiki.display.copyWith(fontSize: 20),
+                        ),
+                        if (_targetContact != null)
+                          Text(
+                            'Target: ${_targetContact!.name}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.close, color: Tiki.ink, size: 20),
+                    onPressed: () async {
+                      setState(() => _isExpanded = false);
+                      await FlutterOverlayWindow.resizeOverlay(76, 76, true);
+                    },
+                  ),
+                ],
               ),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.close, color: Colors.white70, size: 20),
-                onPressed: () async {
-                  setState(() => _isExpanded = false);
-                  await FlutterOverlayWindow.resizeOverlay(76, 76, true);
-                },
+              const Divider(height: 12),
+              ElevatedButton.icon(
+                style: Tiki.filled(),
+                onPressed: _handleAnalyze,
+                icon: const Icon(Icons.auto_awesome, size: 16),
+                label: const Text(
+                  'Reply Suggestions',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 6),
+              ElevatedButton.icon(
+                style: Tiki.filled(Tiki.coral),
+                onPressed: _handleMoonchul,
+                icon: const Icon(Icons.balance, size: 16),
+                label: const Text(
+                  'Moonchul',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 6),
+              OutlinedButton.icon(
+                onPressed: _handleClose,
+                icon: const Icon(Icons.power_settings_new, size: 16),
+                label: const Text('Turn off assistant'),
               ),
             ],
           ),
-          const Divider(color: Colors.white24, height: 14),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF3F51B5)),
-            onPressed: _handleAnalyze,
-            icon: const Icon(Icons.auto_awesome, size: 16),
-            label: const Text('Reply Suggestions', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(height: 6),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5252), foregroundColor: Colors.white),
-            onPressed: _handleMoonchul,
-            icon: const Icon(Icons.balance, size: 16),
-            label: const Text('Moonchul', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(height: 6),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.white70),
-            onPressed: _handleClose,
-            icon: const Icon(Icons.power_settings_new, size: 16),
-            label: const Text('Turn off assistant'),
-          ),
-        ],
+        ),
       ),
     );
   }

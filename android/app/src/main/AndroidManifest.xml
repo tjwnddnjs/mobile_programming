@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <application
-        android:label="SmartChat AI"
+        android:label="TikiTalk"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,8 +1,10 @@
 export 'widgets/system_overlay_entrypoint.dart' show overlayMain;
+
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+
 import 'providers/auth_provider.dart';
 import 'providers/contact_provider.dart';
 import 'screens/login_screen.dart';
@@ -10,6 +12,7 @@ import 'screens/signup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/contacts_screen.dart';
+import 'ui/tiki_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,15 +44,9 @@ class SmartChatApp extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     return MaterialApp(
-      title: 'SmartChat AI',
+      title: 'TikiTalk',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5C6BC0),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      theme: Tiki.theme,
       // 자동 로그인 상태에 따른 시작 화면 라우팅
       initialRoute: auth.isLoggedIn ? '/home' : '/login',
       routes: {
