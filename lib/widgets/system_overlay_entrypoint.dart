@@ -17,6 +17,7 @@ import '../services/storage_service.dart';
 import 'recommendation_dialog.dart';
 import 'reply_instructions_field.dart';
 import 'moonchul_dialog.dart';
+import 'thinking_indicator.dart';
 
 /// [역할 설명]: 앱을 나갔을 때나 백그라운드, 다른 앱(카톡 등) 위에서 독립적으로 실행되는
 /// 시스템 오버레이 윈도우의 최상위 진입점(EntryPoint)입니다.
@@ -253,7 +254,10 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(),
+              if (_stage == 'Analyzing the conversation')
+                const ThinkingIndicator(label: 'Thinking of replies…')
+              else
+                const CircularProgressIndicator(),
               const SizedBox(height: 16),
               Text(
                 _stage,

@@ -1,6 +1,7 @@
 import '../widgets/input_rule.dart';
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../ui/tiki_theme.dart';
 
@@ -22,6 +23,21 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const _maxPhoneDigits = 11;
+  static const _maxPhoneLength = 32;
+  static final _phoneDigit = RegExp(r'[0-9]');
+  static final _phoneFormat =
+      RegExp(r'^\+?(?:[0-9]+[ -]?)?(?:\([0-9]+\)[ -]?)?[0-9]+(?:[ -][0-9]+)*$');
+
+  static final _phoneLengthFormatter =
+      TextInputFormatter.withFunction((oldValue, newValue) {
+    final text = newValue.text;
+    final tooLong = text.length > _maxPhoneLength ||
+        _phoneDigit.allMatches(text).length > _maxPhoneDigits;
+    if (tooLong && text.length >= oldValue.text.length) return oldValue;
+    return newValue;
+  });
+
   void _showEditProfileDialog() {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser;
@@ -56,11 +72,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onChanged: (value) => name = value,
               ),
               TextFormField(
-                inputFormatters: InputRule.phone.forField(context),
+                inputFormatters: [
+                  ...InputRule.phone.forField(context),
+                  _phoneLengthFormatter,
+                ],
                 initialValue: phone,
                 enabled: !saving,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Phone number'),
+                decoration: const InputDecoration(
+                  labelText: 'Phone number',
+                  hintText: '010-1234-5678',
+                  helperText: '7 to 11 digits, including country code if used',
+                ),
                 onChanged: (value) => phone = value,
               ),
               TextFormField(
@@ -142,6 +165,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   setDialogState(() => error = 'Enter your name.');
                   return;
                 }
+                final phoneNumber = phone.trim();
+                if (phoneNumber.isNotEmpty && phoneNumber != user.phone.trim()) {
+                  final digits = _phoneDigit.allMatches(phoneNumber).length;
+                  if (digits < 7 ||
+                      digits > _maxPhoneDigits ||
+                      phoneNumber.length > _maxPhoneLength ||
+                      !_phoneFormat.hasMatch(phoneNumber)) {
+                    setDialogState(() => error =
+                        'Enter a valid phone number with 7 to 11 digits.');
+                    return;
+                  }
+                }
                 if (age.trim().isNotEmpty && (ageNumber == null || ageNumber < 1 || ageNumber > 120)) {
                   setDialogState(() => error = 'Enter an age between 1 and 120.');
                   return;
@@ -153,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 try {
                   await auth.updateProfile(
                     name: name.trim(),
-                    phone: phone.trim(),
+                    phone: phoneNumber,
                     age: age.trim(),
                     gender: gender.trim(),
                     occupation: occupation.trim(),

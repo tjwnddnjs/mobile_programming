@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../ui/tiki_theme.dart';
+import '../widgets/thinking_indicator.dart';
 
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -39,6 +40,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   String? _error;
   bool _validInstructions = true;
   bool _busy = false;
+  bool _showThinking = false;
 
   Future<void> _selectImages() async {
     setState(() { _busy = true; _error = null; });
@@ -80,7 +82,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       return;
     }
     if (_images.isEmpty) return;
-    setState(() { _busy = true; _error = null; _replies = null; });
+    setState(() { _busy = true; _showThinking = true; _error = null; _replies = null; });
     try {
       final replies = await _service.getChatRecommendations(
         base64Images: _images, targetContact: target,
@@ -94,7 +96,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     } catch (error) {
       if (mounted) setState(() => _error = error is StateError ? error.message : 'Analysis failed. Please try again.');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _showThinking = false;
+        });
+      }
     }
   }
 
@@ -156,7 +163,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             icon: const Icon(Icons.auto_awesome),
             label: const Text('Get suggested replies'),
           ),
-          if (_busy) const LinearProgressIndicator(),
+          if (_showThinking)
+            const ThinkingIndicator(label: 'Thinking of replies…', color: Tiki.blue)
+          else if (_busy)
+            const LinearProgressIndicator(),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),

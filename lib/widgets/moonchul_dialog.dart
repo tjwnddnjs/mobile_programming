@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../ui/tiki_theme.dart';
+import 'thinking_indicator.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
@@ -44,6 +45,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
   final List<String> _images = [];
   String _mySide = 'Right-side bubbles';
   bool _loading = false;
+  bool _showThinking = false;
   String? _error;
   MoonchulResult? _result;
   int? _copiedReplyIndex;
@@ -110,6 +112,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
   Future<void> _analyze() async {
     setState(() {
       _loading = true;
+      _showThinking = true;
       _error = null;
       _copiedReplyIndex = null;
     });
@@ -137,7 +140,12 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
             e is StateError ? e.message : 'Analysis failed. Please try again.');
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _showThinking = false;
+        });
+      }
     }
   }
 
@@ -329,7 +337,10 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                           : 'Analyze conflict',
                     ),
                   ),
-                  if (_loading) const LinearProgressIndicator(),
+                  if (_showThinking)
+                    const ThinkingIndicator(label: 'Reading the conversation…', color: Tiki.coral)
+                  else if (_loading)
+                    const LinearProgressIndicator(),
                 ] else if (anonymousResult != null) ...[
                   _section(
                     anonymousResult.canJudge

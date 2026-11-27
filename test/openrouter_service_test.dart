@@ -79,7 +79,7 @@ void main() {
       client: MockClient((request) async {
         final body = jsonDecode(request.body);
         final messages = body['messages'];
-        expect(messages[0]['content'], contains('Write in English by default'));
+        expect(messages[0]['content'], contains('Write all three replies in English only'));
         requestDetails.add(jsonDecode(messages[1]['content'][0]['text']));
         return http.Response(
             jsonEncode({
