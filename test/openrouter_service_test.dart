@@ -126,6 +126,43 @@ void main() {
     expect(requestDetails.last['defaultTone'], 'Friendly and concise');
   });
 
+  test('rejects a non-chat image in every analysis mode', () async {
+    final service = OpenRouterService(
+      apiKey: 'test-key',
+      client: MockClient((request) async {
+        final body = jsonDecode(request.body);
+        expect(body['messages'][0]['content'],
+            contains('only if every attached image'));
+        return http.Response(jsonEncode({
+          'choices': [
+            {'message': {'content': '{"isConversationImage":false}'}}
+          ],
+        }), 200);
+      }),
+    );
+    final images = [jpeg, jpeg, jpeg];
+    final invalidImage = throwsA(isA<StateError>().having(
+      (error) => error.message,
+      'message',
+      contains('Please attach conversation screenshots only.'),
+    ));
+    await expectLater(
+      service.getChatRecommendations(
+        base64Images: images,
+        targetContact: ContactModel(id: '1', name: 'A', relationship: 'B'),
+      ),
+      invalidImage,
+    );
+    await expectLater(
+      service.analyzeAnonymousConversation(base64Images: images),
+      invalidImage,
+    );
+    await expectLater(
+      service.analyzeMoonchulFault(base64Images: images),
+      invalidImage,
+    );
+  });
+
   test('reports API failure rather than returning a sample result', () async {
     final service = OpenRouterService(
         apiKey: 'test-key',
