@@ -20,7 +20,7 @@ class OpenRouterService {
       defaultValue: 'openrouter/free');
 
   OpenRouterService(
-      {this.apiKey ='API키 여기에 입력해라잉',
+      {this.apiKey = const String.fromEnvironment('OPENROUTER_API_KEY'),
       http.Client? client})
       : _client = client ?? http.Client();
 

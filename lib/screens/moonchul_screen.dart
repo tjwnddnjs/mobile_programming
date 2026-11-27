@@ -27,6 +27,7 @@ class _MoonchulScreenState extends State<MoonchulScreen> {
       body: SafeArea(
         child: MoonchulDialog(
           isPage: true,
+          contacts: context.watch<ContactProvider>().contacts,
           targetContact: context.watch<ContactProvider>().activeTarget,
           openRouterService: _service,
           judgmentStyle:

@@ -1,3 +1,4 @@
+import '../widgets/input_rule.dart';
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 
@@ -48,12 +49,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
+                inputFormatters: InputRule.words.forField(context),
                 initialValue: name,
                 enabled: !saving,
                 decoration: const InputDecoration(labelText: 'Name'),
                 onChanged: (value) => name = value,
               ),
               TextFormField(
+                inputFormatters: InputRule.phone.forField(context),
                 initialValue: phone,
                 enabled: !saving,
                 keyboardType: TextInputType.phone,
@@ -61,6 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onChanged: (value) => phone = value,
               ),
               TextFormField(
+                inputFormatters: InputRule.age.forField(context),
                 initialValue: age,
                 enabled: !saving,
                 keyboardType: TextInputType.number,
@@ -68,18 +72,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onChanged: (value) => age = value,
               ),
               TextFormField(
+                inputFormatters: InputRule.words.forField(context),
                 initialValue: gender,
                 enabled: !saving,
                 decoration: const InputDecoration(labelText: 'Gender (optional)'),
                 onChanged: (value) => gender = value,
               ),
               TextFormField(
+                inputFormatters: InputRule.words.forField(context),
                 initialValue: occupation,
                 enabled: !saving,
                 decoration: const InputDecoration(labelText: 'Occupation (optional)'),
                 onChanged: (value) => occupation = value,
               ),
               TextFormField(
+                inputFormatters: InputRule.words.forField(context),
                 initialValue: bio,
                 enabled: !saving,
                 maxLines: 3,
@@ -89,6 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 20),
               Text('AI preferences', style: Theme.of(ctx).textTheme.titleMedium),
               TextFormField(
+                inputFormatters: InputRule.words.forField(context),
                 initialValue: replyTone,
                 enabled: !saving,
                 maxLength: 200,

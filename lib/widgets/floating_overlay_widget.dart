@@ -44,7 +44,7 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
       ),
     );
     if (source == null || !mounted) return;
-    final target = context.read<ContactProvider>().activeTarget;
+    var target = context.read<ContactProvider>().activeTarget;
     if (target == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a contact first.')));
       return;
@@ -59,17 +59,17 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
       }
       if (image == null || !mounted) return;
       final instructions = await showReplyPreview(
-        context, images: [image], isCapture: source == 'capture',
+        context, contacts: context.read<ContactProvider>().contacts, initialTarget: target, onTargetChanged: (c) => target = c, images: [image], isCapture: source == 'capture',
       );
       if (instructions == null || !mounted) return;
       final recommendations = await _openRouterService.getChatRecommendations(
         base64Screenshot: image,
-        targetContact: target,
+        targetContact: target!,
         user: context.read<AuthProvider>().currentUser,
         additionalInstructions: instructions,
       );
       if (!mounted) return;
-      await showDialog(context: context, builder: (_) => RecommendationDialog(targetName: target.name, recommendations: recommendations));
+      await showDialog(context: context, builder: (_) => RecommendationDialog(targetName: target!.name, recommendations: recommendations));
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error is StateError ? error.message : 'Could not open the image.')));
@@ -87,6 +87,7 @@ class _FloatingOverlayWidgetState extends State<FloatingOverlayWidget> with Sing
     showDialog(
       context: context,
       builder: (ctx) => MoonchulDialog(
+        contacts: context.read<ContactProvider>().contacts,
         targetContact: target,
         openRouterService: _openRouterService,
         judgmentStyle: context.read<AuthProvider>().currentUser?.judgmentStyle ??

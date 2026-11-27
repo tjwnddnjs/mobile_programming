@@ -1,3 +1,4 @@
+import '../widgets/input_rule.dart';
 // lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
 
@@ -93,6 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // 이메일 입력 필드
                   TextField(
+                    inputFormatters: InputRule.account.forField(context),
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
@@ -104,6 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // 비밀번호 입력 필드
                   TextField(
+                    inputFormatters: InputRule.account.forField(context),
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(

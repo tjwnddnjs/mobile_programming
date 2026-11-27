@@ -138,15 +138,19 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
       if (!mounted) return;
       await FlutterOverlayWindow.updateFlag(OverlayFlag.focusPointer);
       if (!mounted) return;
+      final storage = StorageService();
+      final user = await storage.getCurrentUser(refresh: true);
+      final contacts = await storage.getContacts();
+      var selected = contacts.where((c) => c.id == _targetContact?.id).firstOrNull ?? contacts.where((c) => c.isAnalysisTarget).firstOrNull ?? contacts.firstOrNull;
+      if (!mounted) return;
       final instructions = await showReplyPreview(
-        context, images: images, isCapture: source == 'capture',
+        context, contacts: contacts, initialTarget: selected, onTargetChanged: (c) => selected = c, images: images, isCapture: source == 'capture',
         barrierColor: Colors.transparent,
       );
       await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
       if (instructions == null || !mounted) return;
       setState(() { _stage = 'Analyzing the conversation'; _elapsed = 0; });
-      final target = _targetContact ?? ContactModel(id: '1', name: 'Other person', relationship: 'Conversation partner');
-      final user = await StorageService().getCurrentUser(refresh: true);
+      final target = selected ?? ContactModel(id: '1', name: 'Other person', relationship: 'Conversation partner');
       final replies = await _openRouterService.getChatRecommendations(
         base64Images: images,
         targetContact: target,
@@ -182,6 +186,7 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
     setState(() { _isExpanded = false; _busy = true; _stage = 'Opening Moonchul'; _elapsed = 0; });
     try {
       final user = await StorageService().getCurrentUser(refresh: true);
+      final contacts = await StorageService().getContacts();
       await FlutterOverlayWindow.resizeOverlay(340, 620, false);
       await FlutterOverlayWindow.updateFlag(OverlayFlag.focusPointer);
       if (!mounted) return;
@@ -189,7 +194,8 @@ class _SystemOverlayFloatingUIState extends State<SystemOverlayFloatingUI> {
         context: context,
         barrierColor: Colors.transparent,
         builder: (ctx) => MoonchulDialog(
-          targetContact: _targetContact,
+          contacts: contacts,
+          targetContact: contacts.where((c) => c.id == _targetContact?.id).firstOrNull ?? contacts.where((c) => c.isAnalysisTarget).firstOrNull ?? contacts.firstOrNull,
           openRouterService: _openRouterService,
           isSystemOverlay: true,
           judgmentStyle: user?.judgmentStyle ?? JudgmentStyle.balanced,

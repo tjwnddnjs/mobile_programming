@@ -1,3 +1,4 @@
+import '../widgets/input_rule.dart';
 // lib/screens/signup_screen.dart
 import 'package:flutter/material.dart';
 
@@ -84,6 +85,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     // 1. 이름 입력
                     TextFormField(
+                      inputFormatters: InputRule.words.forField(context),
                       controller: _nameController,
                       decoration: const InputDecoration(
                         labelText: 'Name or nickname',
@@ -97,6 +99,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     // 2. 이메일/아이디 입력
                     TextFormField(
+                      inputFormatters: InputRule.account.forField(context),
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
@@ -113,6 +116,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     // 3. 비밀번호 입력
                     TextFormField(
+                      inputFormatters: InputRule.account.forField(context),
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
@@ -139,6 +143,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     // 4. 전화번호 입력
                     TextFormField(
+                      inputFormatters: InputRule.phone.forField(context),
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       decoration: const InputDecoration(

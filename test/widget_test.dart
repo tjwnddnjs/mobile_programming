@@ -43,6 +43,7 @@ void main() {
       builder: (context) => TextButton(
         onPressed: () async => submitted.add(await showReplyPreview(
           context,
+          contacts: const [], initialTarget: null, onTargetChanged: (_) {},
           images: [image!, image],
           isCapture: false,
         )),

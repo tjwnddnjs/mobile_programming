@@ -1,3 +1,4 @@
+import '../widgets/input_rule.dart';
 // lib/screens/contacts_screen.dart
 import 'package:flutter/material.dart';
 
@@ -32,6 +33,7 @@ class ContactsScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                inputFormatters: InputRule.words.forField(context),
                 controller: nameCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Name (e.g., Manager)',
@@ -39,6 +41,7 @@ class ContactsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               TextField(
+                inputFormatters: InputRule.words.forField(context),
                 controller: relCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Relationship (e.g., manager)',
@@ -46,6 +49,7 @@ class ContactsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               TextField(
+                inputFormatters: InputRule.words.forField(context),
                 controller: memoCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Notes (e.g., prefers short updates)',
@@ -53,6 +57,7 @@ class ContactsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
+                inputFormatters: InputRule.words.forField(context),
                 controller: personalityCtrl,
                 maxLines: 2,
                 decoration: const InputDecoration(

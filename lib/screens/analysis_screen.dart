@@ -1,3 +1,5 @@
+import '../models/contact_model.dart';
+import '../widgets/target_selector.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -21,9 +23,12 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
+  String? _selectedId;
+  ContactModel? _target(ContactProvider provider) =>
+      provider.contacts.where((c) => c.id == _selectedId).firstOrNull ?? provider.activeTarget;
   final _service = OpenRouterService();
   final _instructions = TextEditingController();
-  String? _image;
+  List<String> _images = [];
 
   @override
   void dispose() {
@@ -32,16 +37,21 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
   List<String>? _replies;
   String? _error;
+  bool _validInstructions = true;
   bool _busy = false;
 
-  Future<void> _selectImage() async {
+  Future<void> _selectImages() async {
     setState(() { _busy = true; _error = null; });
     try {
-      final image = await ScreenCaptureService.pickImageAsBase64();
+      final images = await ScreenCaptureService.pickImagesAsBase64();
       if (!mounted) return;
-      if (image != null) {
-        setState(() { _image = image; _replies = null; });
+      if (images == null || images.isEmpty) return;
+      // 취소하거나 제한을 넘기면 기존 사진과 결과를 유지합니다.
+      if (images.length > 3) {
+        setState(() => _error = 'Select up to 3 images at a time.');
+        return;
       }
+      setState(() { _images = images; _replies = null; });
     } on PlatformException catch (error) {
       debugPrint('Image selection failed: ${error.code}');
       if (mounted) {
@@ -64,16 +74,16 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Future<void> _analyze() async {
-    final target = context.read<ContactProvider>().activeTarget;
+    final target = _target(context.read<ContactProvider>());
     if (target == null) {
       setState(() => _error = 'Select a contact on the Home screen first.');
       return;
     }
-    if (_image == null) return;
+    if (_images.isEmpty) return;
     setState(() { _busy = true; _error = null; _replies = null; });
     try {
       final replies = await _service.getChatRecommendations(
-        base64Screenshot: _image!, targetContact: target,
+        base64Images: _images, targetContact: target,
         user: context.read<AuthProvider>().currentUser,
         additionalInstructions: _instructions.text,
       );
@@ -90,27 +100,23 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final target = context.watch<ContactProvider>().activeTarget;
+    final target = _target(context.watch<ContactProvider>());
     return Scaffold(
       appBar: const TikiAppBar(title: 'Reply Suggestions'),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           TikiPanel(
-            child: ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: Text(
-                target == null
-                    ? 'No contact selected.'
-                    : 'Contact: ${target.name}',
-                style: Tiki.label,
-              ),
-              subtitle: target == null ? null : Text(target.relationship),
+            child: TargetSelector(pageLayout: true,
+              contacts: context.watch<ContactProvider>().contacts, selected: target,
+              onChanged: _busy ? null : (contact) {
+                setState(() { _selectedId = contact.id; _replies = null; });
+              },
             ),
           ),
           const SizedBox(height: 12),
           const Text(
-            'Select a conversation image to get three suggested replies.',
+            'Select up to 3 conversation images to get three suggested replies.',
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -118,9 +124,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             runSpacing: 8,
             children: [
               OutlinedButton.icon(
-                onPressed: _busy ? null : _selectImage,
+                onPressed: _busy ? null : _selectImages,
                 icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Attach image'),
+                label: Text('Select images (${_images.length}/3)'),
               ),
             ],
           ),
@@ -129,23 +135,24 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             'Use the floating assistant to capture the screen of another app.',
             style: TextStyle(fontSize: 12),
           ),
-          if (_image != null) ...[
+          if (_images.isNotEmpty) ...[
             const SizedBox(height: 16),
-            ConstrainedBox(
+            for (final image in _images)
+              ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 300),
-              child: Image.memory(base64Decode(_image!), fit: BoxFit.contain),
+              child: Image.memory(base64Decode(image), fit: BoxFit.contain),
             ),
             const SizedBox(height: 8),
             const Text(
-              'OpenRouter receives the image, selected contact details, relevant profile details and preferences, and any additional instructions.',
+              'OpenRouter receives the selected images, selected contact details, relevant profile details and preferences, and any additional instructions.',
               style: TextStyle(fontSize: 12),
             ),
           ],
           const SizedBox(height: 16),
-          ReplyInstructionsField(controller: _instructions, enabled: !_busy),
+          ReplyInstructionsField(onValidityChanged: (v) => setState(() => _validInstructions = v), controller: _instructions, enabled: !_busy),
           const SizedBox(height: 12),
           ElevatedButton.icon(
-            onPressed: _busy || _image == null ? null : _analyze,
+            onPressed: _busy || !_validInstructions || _images.isEmpty ? null : _analyze,
             icon: const Icon(Icons.auto_awesome),
             label: const Text('Get suggested replies'),
           ),

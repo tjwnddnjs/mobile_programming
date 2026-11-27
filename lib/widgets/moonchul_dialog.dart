@@ -1,3 +1,5 @@
+import '../widgets/target_selector.dart';
+import 'reply_instructions_field.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import '../models/user_model.dart';
 import '../services/openrouter_service.dart';
 
 class MoonchulDialog extends StatefulWidget {
+  final List<ContactModel> contacts;
   final ContactModel? targetContact;
   final OpenRouterService openRouterService;
   final bool isSystemOverlay;
@@ -23,6 +26,7 @@ class MoonchulDialog extends StatefulWidget {
   const MoonchulDialog(
       {super.key,
       this.targetContact,
+      required this.contacts,
       required this.openRouterService,
       this.isSystemOverlay = false,
       this.isPage = false,
@@ -32,6 +36,9 @@ class MoonchulDialog extends StatefulWidget {
 }
 
 class _MoonchulDialogState extends State<MoonchulDialog> {
+  String? _selectedId;
+  ContactModel? get _target => widget.contacts.where((c) => c.id == _selectedId).firstOrNull ?? widget.targetContact;
+  bool _validContext = true;
   final _contextNote = TextEditingController();
   static const _maxImages = 5;
   final List<String> _images = [];
@@ -118,7 +125,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
       }
       final result = await widget.openRouterService.analyzeMoonchulFault(
           base64Images: _images,
-          targetContact: widget.targetContact,
+          targetContact: _target,
           mySide: _mySide,
           contextNote: _contextNote.text.trim(),
           judgmentStyle: widget.judgmentStyle,
@@ -200,6 +207,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (result == null && anonymousResult == null) ...[
+                  TargetSelector(pageLayout: widget.isPage, contacts: widget.contacts, selected: _target, onChanged: _loading ? null : (c) => setState(() => _selectedId = c.id)), 
                   const Text(
                     'See who said what, what caused the conflict, and how you could respond.',
                   ),
@@ -299,18 +307,11 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                       ),
                   ]),
                   const SizedBox(height: 12),
-                  TextField(
+                  ReplyInstructionsField(
                     controller: _contextNote,
+                    isContext: true,
                     enabled: !_loading,
-                    maxLength: 1500,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Additional context (optional)',
-                      hintText:
-                          'Add the reason for the dispute, any previous agreement, or the outcome you want.',
-                      border: Tiki.fieldBorder,
-                    ),
+                    onValidityChanged: (v) => setState(() => _validContext = v),
                   ),
                   Text(
                     _mySide == 'I cannot tell'
@@ -321,7 +322,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                   const SizedBox(height: 12),
                   ElevatedButton(
                     style: Tiki.filled(Tiki.coral),
-                    onPressed: _loading || _images.isEmpty ? null : _analyze,
+                    onPressed: _loading || !_validContext || _images.isEmpty ? null : _analyze,
                     child: Text(
                       _loading
                           ? 'Analyzing the conversation…'
