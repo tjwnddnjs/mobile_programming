@@ -42,8 +42,22 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       if (image != null) {
         setState(() { _image = image; _replies = null; });
       }
+    } on PlatformException catch (error) {
+      debugPrint('Image selection failed: ${error.code}');
+      if (mounted) {
+        setState(() => _error =
+            error.message ?? 'Could not open the image. Please try again.');
+      }
+    } on MissingPluginException {
+      debugPrint('Image selection channel is unavailable.');
+      if (mounted) {
+        setState(() => _error =
+            'Photo picker is unavailable. Close and reopen the app.');
+      }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not open the image. Please try again.');
+      if (mounted) {
+        setState(() => _error = 'Could not open the image. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

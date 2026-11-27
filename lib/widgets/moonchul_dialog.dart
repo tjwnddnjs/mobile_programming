@@ -33,7 +33,8 @@ class MoonchulDialog extends StatefulWidget {
 
 class _MoonchulDialogState extends State<MoonchulDialog> {
   final _contextNote = TextEditingController();
-  List<String> _images = [];
+  static const _maxImages = 5;
+  final List<String> _images = [];
   String _mySide = 'Right-side bubbles';
   bool _loading = false;
   String? _error;
@@ -61,13 +62,17 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
       final images = await ScreenCaptureService.pickImagesAsBase64();
       if (!mounted) return;
       if (images != null && images.isNotEmpty) {
-        if (images.length > 5) throw StateError('Choose up to 5 images.');
+        final remaining = _maxImages - _images.length;
+        if (images.length > remaining) {
+          throw StateError('You can attach up to $_maxImages images in total. '
+              'Select up to $remaining more.');
+        }
         // 미리보기 불가능한 입력은 분석 전에 알립니다.
         for (final image in images) {
           base64Decode(image);
         }
         setState(() {
-          _images = images;
+          _images.addAll(images);
           _result = null;
           _anonymousResult = null;
         });
@@ -203,19 +208,21 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                   const SizedBox(height: 12),
                   _formBlock([
                     const Text(
-                      'Conversation screenshots (up to 5)',
+                      'Conversation screenshots (up to $_maxImages)',
                       style: Tiki.label,
                     ),
                     const Text(
-                      'Select images in chronological order and check the previews.',
+                      'Add screenshots in chronological order. You can add them one at a time.',
                     ),
                     OutlinedButton.icon(
-                      onPressed: _loading ? null : _pickImages,
+                      onPressed: _loading || _images.length >= _maxImages
+                          ? null
+                          : _pickImages,
                       icon: const Icon(Icons.photo_library_outlined),
                       label: Text(
                         _images.isEmpty
                             ? 'Choose images'
-                            : 'Choose different images',
+                            : 'Add more images',
                       ),
                     ),
                     if (_images.isNotEmpty)
@@ -274,7 +281,12 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                         'I cannot tell',
                       ]
                           .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                            (s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s == 'I cannot tell'
+                                  ? 'Other people / unsure'
+                                  : s),
+                            ),
                           )
                           .toList(),
                       onChanged:
@@ -282,7 +294,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                     ),
                     if (_mySide == 'I cannot tell')
                       const Text(
-                        'The analysis uses labels like Person A and Person B. Add names or roles below if you know them.',
+                        'For a dispute between other people, add the two names as shown in the chat below.',
                         style: TextStyle(fontSize: 12, color: Colors.black54),
                       ),
                   ]),
@@ -320,7 +332,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                 ] else if (anonymousResult != null) ...[
                   _section(
                     anonymousResult.canJudge
-                        ? 'Preliminary assessment'
+                        ? 'Responsibility assessment'
                         : 'Assessment deferred',
                     anonymousResult.summary,
                     color: Tiki.coral,
@@ -389,7 +401,7 @@ class _MoonchulDialogState extends State<MoonchulDialog> {
                 ] else if (result != null) ...[
                   _section(
                     result.canJudge
-                        ? 'Preliminary assessment'
+                        ? 'Responsibility assessment'
                         : 'Assessment deferred',
                     result.summary,
                     color: Tiki.coral,
